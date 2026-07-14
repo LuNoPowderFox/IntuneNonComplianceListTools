@@ -2,8 +2,8 @@ import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from typing import List
-import formatExcel as fE
-import CompileComplianceList as ccl
+from .formatExcel import formatExcel as fE
+from . import CompileComplianceList as ccl
 import validators
 import getopt, sys
 import re
@@ -307,7 +307,7 @@ def mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = N
     print("")
     fE.formatExcel(outputPath, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
 
-def showHelp() -> None:
+def showMergeHelp() -> None:
     print("CompileComplianceList.py\n\n" +
           "Arguments:\n"+
           "'-o'/'--OldFile' \t\t- The path of the input file of the old data to merge. Must be a .xlsx file (Mandatory)\n" +
@@ -340,12 +340,12 @@ if __name__ == "__main__":
         print(values)
         if len(arguments) == 0:
             print("No arguments given, displaying help and exiting...")
-            showHelp()
+            showMergeHelp()
             exit(0)
         for currentArg, currentVal in arguments:
             if currentArg in ("-h", "--Help"):
                 print("Showing Help")
-                showHelp()
+                showMergeHelp()
                 exit(0)
             elif currentArg in ("-o", "--OldFile"):
                 oldFilePath = currentVal

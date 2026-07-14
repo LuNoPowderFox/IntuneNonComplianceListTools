@@ -1,5 +1,5 @@
 import pandas as pd
-import formatExcel as fE
+from .formatExcel import formatExcel as fE
 from typing import List
 import getopt, sys
 import re
@@ -123,7 +123,7 @@ def checkArgs(inputFilePath: str, outputFilePath: str, wantedOS: str | List[str]
     if outputFilePath is None:
         return outputFile
 
-def showHelp() -> None:
+def showCompileHelp() -> None:
     #TODO: add option for enabling/disabling converting device overview links and user email links
     print("CompileComplianceList.py\n\n" +
           "Arguments:\n"+
@@ -151,12 +151,12 @@ if __name__ == "__main__":
         arguments, values = getopt.getopt(args, options, long_options)
         if len(arguments) == 0:
             print("No arguments given, displaying help and exiting...")
-            showHelp()
+            showCompileHelp()
             exit(0)
         for currentArg, currentVal in arguments:
             if currentArg in ("-h", "--Help"):
                 print("Showing Help")
-                showHelp()
+                showCompileHelp()
                 exit(0)
             elif currentArg in ("-i", "--InputFile"):
                 inputFilePath = currentVal

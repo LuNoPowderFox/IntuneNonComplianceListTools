@@ -10,6 +10,32 @@ Compile exported Intune reports for Noncompliant devices into a formated excel s
 - [openpyxl](https://pypi.org/project/openpyxl/)
 - [validators](https://pypi.org/project/validators/)
 
+
+## Usage/CompileListTools
+
+### Sub commands
+
+Main script
+- `'Compile'`: Try to run a Compile with the rest of the given arguments
+- `'Merge'`: Try to run a Merge with the rest of the given arguments
+- `'Help'`: Display usage help for the main script and exit
+- `'GUI'`: Launch program in GUI mode if needed modules are found
+
+### CLI arguments
+
+#### Help
+
+- `'-a'/'--All'/'All'`: Show help for everything
+- `'-t'/'--Tools'/'Tools'/[Nothing]`: Show main help for the main script
+- `'-h'/'--Help'/'Help'`: Show available help options (This help)
+- `'-c'/'--Compile'/'Compile'`: Show help for [compiling](#usagecompiling)
+- `'-m'/'--Merge'/'Merge'`: Show help for [merging](#usagemerging)
+
+#### Other 
+
+- `'-s'/'--SettingsFile'`: Use non-default path for settings file (Default is '...')
+- `'-g'/'--GUI'`: Launch the program as a GUI if needed modules are found and parse the rest of the arguments
+
 ## Usage/Compiling
 
 ### CLI arguments
@@ -37,9 +63,9 @@ Compile exported Intune reports for Noncompliant devices into a formated excel s
 - `'-k'/'--keepDeviceIds'`: Keep the Device Id column
 - `'-h'/'--Help'`: Show this help and exit the program
 
-## Planned Features
+## Planned Features/TODO
 
-- [ ] Turn this into a git repo
+- [x] Turn this into a git repo
 - [ ] clean up the mess i made...
 - [ ] GUI
 - [ ] Better config
@@ -48,11 +74,16 @@ Compile exported Intune reports for Noncompliant devices into a formated excel s
 - [ ] Automatically retrieve new data from Intune
 - [ ] Automatically retrieve old list
 
-### Git repo
+### Clean up
 
-- probably with the MIT license, i think
-- for now in github
-- 
+- Create one main file that handles all arguments and gives them to the according module
+- look if there is missing documentation
+- move modules into a folder
+- make the modules check the given arguments and return a dictionary, containing the return status code and either error messages or
+  other needed output in case of success
+- let the modules be able to still be called by themselves (provided they have access to their dependancy modules) TODO: fix the import error from no found parent package
+- main functions of the modules should receive a dictionary with all arguments and settings (maybe the settings over smth else)
+- maybe switch existing argument handling to argparse (it has support for options with multiple args)
 
 ### GUI
 
@@ -64,11 +95,13 @@ Compile exported Intune reports for Noncompliant devices into a formated excel s
 
 ### Better config
 
+TODO: choose default settings file path
 - json config file
 - better autoLink for format (custom patterns and columns)
 - better format options
 - better column oder options
 - automatic naming scheme options
+- handle the loading and setting of options in own module
 
 ### Autocompile .csv
 
