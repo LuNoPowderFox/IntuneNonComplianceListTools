@@ -1,5 +1,6 @@
 import pandas as pd
 from .formatExcel import formatExcel as fE
+from . import utils
 from typing import List
 import getopt, sys
 import re
@@ -123,18 +124,6 @@ def checkArgs(inputFilePath: str, outputFilePath: str, wantedOS: str | List[str]
     if outputFilePath is None:
         return outputFile
 
-def showCompileHelp() -> None:
-    #TODO: add option for enabling/disabling converting device overview links and user email links
-    print("CompileComplianceList.py\n\n" +
-          "Arguments:\n"+
-          "'-i'/'--InputFile' \t\t- The path of the input file to process. Must be a .csv file (Mandatory)\n" +
-          "'-o'/'--OutputFile' \t\t- The path of the output file. If not set, the name of the input file will be used instead\n" +
-          "'-w'/'--WantedOS' \t\t- The OS you want to compile the data for. Default is 'Windows'\n" +
-          "'-d'/'--DeviceLinkSkip' \t- Skip the creation of the device overview links\n" +
-          "'-e'/'--EmailLinks' \t\t- Convert Emails into teams chat links\n" +
-          "'-k'/'--KeepDeviceIds' \t\t- Keep the Device Id column\n" +
-          "'-h'/'--Help' \t\t\t- Show this help and exit the program\n")
-
 if __name__ == "__main__":
     args = sys.argv[1:]
     options = "hi:o:w:dek"
@@ -151,12 +140,12 @@ if __name__ == "__main__":
         arguments, values = getopt.getopt(args, options, long_options)
         if len(arguments) == 0:
             print("No arguments given, displaying help and exiting...")
-            showCompileHelp()
+            utils.showCompileHelp()
             exit(0)
         for currentArg, currentVal in arguments:
             if currentArg in ("-h", "--Help"):
                 print("Showing Help")
-                showCompileHelp()
+                utils.showCompileHelp()
                 exit(0)
             elif currentArg in ("-i", "--InputFile"):
                 inputFilePath = currentVal

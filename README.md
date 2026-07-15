@@ -23,15 +23,22 @@ Main script
 
 ### CLI arguments
 
+#### GUI
+
+- `'-h'/'--Help'`: Launch GUI in the help screen
+- `'-c'/'--Compile'`: Launch GUI in the compiling screen
+- `'-m'/'--Merge'`: Launch GUI in the Merging screen
+
 #### Help
 
-- `'-a'/'--All'/'All'`: Show help for everything
-- `'-t'/'--Tools'/'Tools'/[Nothing]`: Show main help for the main script
-- `'-h'/'--Help'/'Help'`: Show available help options (This help)
-- `'-c'/'--Compile'/'Compile'`: Show help for [compiling](#usagecompiling)
-- `'-m'/'--Merge'/'Merge'`: Show help for [merging](#usagemerging)
+- `'All'`: Show help for everything
+- `'Tools'`: Show main help for the main script
+- `'Help'/[Nothing]`: Show available help options (This help)
+- `'Compile'`: Show help for [compiling](#usagecompiling)
+- `'Merge'`: Show help for [merging](#usagemerging)
+- `'GUI'`: Show help for launching in GUI mode
 
-#### Other 
+#### Other/shared 
 
 - `'-s'/'--SettingsFile'`: Use non-default path for settings file (Default is '...')
 - `'-g'/'--GUI'`: Launch the program as a GUI if needed modules are found and parse the rest of the arguments
