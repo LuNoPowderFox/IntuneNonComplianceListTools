@@ -88,7 +88,7 @@ Main script
 - move modules into a folder
 - make the modules check the given arguments and return a dictionary, containing the return status code and either error messages or
   other needed output in case of success
-- let the modules be able to still be called by themselves (provided they have access to their dependancy modules) TODO: fix the import error from no found parent package
+- let the modules be able to still be called by themselves (provided they have access to their dependancy modules) TODO: fix the import error from no found parent package (will probably not do this)
 - main functions of the modules should receive a dictionary with all arguments and settings (maybe the settings over smth else)
 - maybe switch existing argument handling to argparse (it has support for options with multiple args)
 

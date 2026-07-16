@@ -1,5 +1,6 @@
+import argparse
 import pandas as pd
-from .formatExcel import formatExcel as fE
+from .formatExcel import formatExcel #as fE
 from . import utils
 from typing import List
 import getopt, sys
@@ -98,7 +99,7 @@ def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: str, makeDevic
     processedData = processInput(df, wantedOS)
 
     processedData.to_excel(outputFile, index=False, sheet_name=wantedOS)
-    fE.formatExcel(outputFile, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    formatExcel(outputFile, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
 
 # Check the args and run the compile
 # Return output File path
@@ -123,6 +124,61 @@ def checkArgs(inputFilePath: str, outputFilePath: str, wantedOS: str | List[str]
     convertDataToExcel(inputFile=inputFile, outputFile=outputFile, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
     if outputFilePath is None:
         return outputFile
+
+def compileComplianceList(pArgs: argparse.Namespace) -> dict | None:
+    """Return dictionary structure:
+    {
+        "ReturnCode": (ReturnCode),
+        "returnValues": {
+            (Value): (Value or ReturnCode)        
+        },
+        "args": { (if needed)
+            (Argname): (ReturnCode)
+        },
+        "errorMessages": { (if needed)
+            (Argname): (Error message)
+        }    
+    }
+    """
+
+    args = utils.extractCompileArgs(pArgs=pArgs)
+
+    neededArgs: set = {"inputFile", "outputFile", "wantedOS", "deviceLinkSkip", "emailLinks", "keepDeviceIds"}
+    result = {
+        "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "returnValues": {},
+        "args": {},
+        "errorMessages": {}
+    }
+
+    if not args["ReturnCode"] == utils.ReturnCodes.SUCCESS:
+        result["ReturnCode"] = args["ReturnCode"]
+        result["args"] = args["args"]
+        result["errorMessages"] = args["errorMessages"]
+        return result
+
+    print(f"args: {args}")
+
+    if not "args" in args:
+        result["ReturnCode"] = utils.ReturnCodes.NO_ARGS_GIVEN
+        return result
+    elif not any(arg in neededArgs for arg in args["args"].keys()):
+        result["ReturnCode"] = utils.ReturnCodes.MISSING_ARGS
+        return result
+
+    inputFile: str = args["args"]["inputFile"]
+    outputFile: str = args["args"]["outputFile"]
+    wantedOS: str | List[str] = args["args"]["wantedOS"]
+    makeDeviceLinks: bool = not args["args"]["deviceLinkSkip"]
+    makeEmailLinks: bool = args["args"]["emailLinks"]
+    keepDeviceIdColumn: bool = args["args"]["keepDeviceIds"]
+    
+    tmp = convertDataToExcel(inputFile=inputFile, outputFile=outputFile, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    
+    #TODO: add more error handling during the compile
+    result["returnValues"]["outputFile"] = outputFile
+    return result
+    ...
 
 if __name__ == "__main__":
     args = sys.argv[1:]

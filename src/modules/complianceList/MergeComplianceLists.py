@@ -1,8 +1,9 @@
+import argparse
 import pandas as pd
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from typing import List
-from .formatExcel import formatExcel as fE
+from .formatExcel import formatExcel # as fE
 from . import CompileComplianceList as ccl
 from . import utils
 import validators
@@ -260,8 +261,8 @@ def compareOldData(oldData: pd.DataFrame, newData: pd.DataFrame, columnList: Lis
 
     return resultData
 
-def mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = None, wantedOS: str = "Windows", 
-                         makeDeviceLinks: bool = True, makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> None:
+def _mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = None, wantedOS: str | List[str] = "Windows", 
+                         makeDeviceLinks: bool = True, makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> dict | None:
     # 1. check which devices from oldData are also still in newData
     # 1.1 compare the problem columns, using newData as the newer state and update accordingly
     # 1.2 compare the notes from those devices and keep the new ones + maybe the old notes in brackets [] after that
@@ -277,9 +278,9 @@ def mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = N
     oldData = pd.read_excel(oldListPath, sheet_name=wantedOS, engine="openpyxl").fillna('')
     newData = pd.read_excel(newListPath, sheet_name=wantedOS, engine="openpyxl").fillna('')
     
-    oldWb = load_workbook(oldFilePath)
+    oldWb = load_workbook(oldListPath)
     oldSheet = oldWb.active
-    newWb = load_workbook(newFilePath)
+    newWb = load_workbook(newListPath)
     newSheet = newWb.active
 
     oldLinks = getHyperlinks(sheet=oldSheet)
@@ -306,7 +307,61 @@ def mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = N
 
     mergedData.to_excel(outputPath, index=False, sheet_name=wantedOS)
     print("")
-    fE.formatExcel(outputPath, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    formatExcel(outputPath, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+
+def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
+    """Return dictionary structure:
+    {
+        "ReturnCode": (ReturnCode),
+        "returnValues": {
+            (Value): (Value or ReturnCode)        
+        },
+        "args": { (if needed)
+            (Argname): (ReturnCode)
+        },
+        "errorMessages": { (if needed)
+            (Argname): (Error message)
+        }    
+    }
+    """
+
+    args = utils.extractMergeArgs(pArgs=pArgs)
+
+    neededArgs: set = {"oldFile", "newFile", "mergedFile", "compileCSV", "wantedOS", "deviceLinkSkip", "emailLinks", "keepDeviceIds"}
+    result = {
+        "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "returnValues": {},
+        "errorMessages": {}
+    }
+    
+    if not args["ReturnCode"] == utils.ReturnCodes.SUCCESS:
+        result["ReturnCode"] = args["ReturnCode"]
+        result["args"] = args["args"]
+        result["errorMessages"] = args["errorMessages"]
+        return result
+
+    print(f"args: {args}")
+
+    if not "args" in args:
+        result["ReturnCode"] = utils.ReturnCodes.NO_ARGS_GIVEN
+        return result
+    elif not any(arg in neededArgs for arg in args["args"].keys()):
+        result["ReturnCode"] = utils.ReturnCodes.MISSING_ARGS
+        return result
+
+    oldListPath: str = args["args"]["oldFile"]
+    newListPath: str = args["args"]["newFile"]
+    outputPath: str = args["args"]["mergedFile"]
+    wantedOS: str | List[str] = args["args"]["wantedOS"]
+    makeDeviceLinks: bool = not args["args"]["deviceLinkSkip"]
+    makeEmailLinks: bool = args["args"]["emailLinks"]
+    keepDeviceIdColumn: bool = args["args"]["keepDeviceIds"]
+    
+    tmp = _mergeComplianceLists(oldListPath=oldListPath, newListPath=newListPath, outputPath=outputPath, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    
+    #TODO: add more error handling during the compile
+    result["returnValues"]["mergedFile"] = outputPath
+    return result
 
 if __name__ == "__main__":
     args = sys.argv[1:]
@@ -377,4 +432,4 @@ if __name__ == "__main__":
     if wantedOS is None:
         wantedOS = "Windows"
 
-    mergeComplianceLists(oldListPath=oldFilePath, newListPath=newFilePath, outputPath=outputFilePath, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    _mergeComplianceLists(oldListPath=oldFilePath, newListPath=newFilePath, outputPath=outputFilePath, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)

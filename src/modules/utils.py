@@ -1,6 +1,6 @@
 from typing import List
 
-from modules import clUtils
+from modules import clUtils, MergeComplianceLists, CompileComplianceList
 import argparse
 
 def emptyFunc(tmp) -> None:
@@ -39,10 +39,11 @@ def createGuiParser(parser: argparse.ArgumentParser | None = None) -> None:
     
     ...
 
-def createArgParser() -> None:
+def createArgParser() -> argparse.ArgumentParser | None:
     mainParser = argparse.ArgumentParser(
                             prog="ComplianceListTools", 
                             description="A set of tools to process exported .csv lists of Intune's noncompliant devices report into a more usable format and be able to merge lists together.",
+                            epilog="Created by LuNoPowderFox https://github.com/LuNoPowderFox/IntuneCompileNonComplianceList (still a private repo)",
                             allow_abbrev=False,
                             add_help=False
                             )
@@ -112,7 +113,8 @@ def createArgParser() -> None:
                             parents=[commonOptions]
                             )
     clUtils.createCompileParser(pParser=compileParser)
-    compileParser.set_defaults(func=clUtils.extractCompileArgs)
+    # compileParser.set_defaults(func=clUtils.extractCompileArgs)
+    compileParser.set_defaults(func=CompileComplianceList.compileComplianceList)
 
     mergeParser = subParsers.add_parser(
                             "Merge",
@@ -123,7 +125,8 @@ def createArgParser() -> None:
                             parents=[commonOptions]
                             )
     clUtils.createMergeParser(pParser=mergeParser)
-    mergeParser.set_defaults(func=clUtils.extractMergeArgs)
+    # mergeParser.set_defaults(func=clUtils.extractMergeArgs)
+    mergeParser.set_defaults(func=MergeComplianceLists.mergeComplianceLists)
 
     helpParser = subParsers.add_parser(
                             "Help", 
@@ -147,6 +150,9 @@ def createArgParser() -> None:
     # so that the help function can access the parsers
     helpParser.set_defaults(parserList=parserList)
 
-    args = mainParser.parse_args()
-    # print(args)
-    print(args.func(args))
+    # args = mainParser.parse_args()
+    # argsP = args.func(args)
+    # # print(args)
+    # print(argsP)
+
+    return mainParser

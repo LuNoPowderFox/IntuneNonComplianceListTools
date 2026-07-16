@@ -13,6 +13,8 @@ class ReturnCodes(Enum):
     INVALID_INPUT_FILE_FORMAT = -5
     MISSING_INPUT_FILE = -6
     INVALID_INPUT_FILE_PATH = -7
+    MISSING_ARGS = -8
+    # COMPLIANCE_LIST_INVALID_OS = -20
 
 def createCompileParser(pParser: argparse.ArgumentParser | None = None, isStandalone: bool = False) -> argparse.ArgumentParser | None:
     parser: argparse.ArgumentParser = pParser
@@ -132,7 +134,7 @@ def extractCompileArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         result["args"]["inputFile"] = args["inputFile"]
     if args["outputFile"] is None:
         if not result["args"]["inputFile"] in ReturnCodes:
-            args["outputFile"] = re.sub(".csv$", ".xlsx", args["inputFile"])
+            result["args"]["outputFile"] = re.sub(".csv$", ".xlsx", args["inputFile"])
         else:
             result["args"]["outputFile"] = ReturnCodes.ERROR
             result["errorMessages"]["outputFile"] = "Error, Unable to generate name of output file due to a invalid input file!"
