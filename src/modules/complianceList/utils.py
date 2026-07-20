@@ -69,6 +69,7 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),
+        "Mode": (Mode, the program is running in),
         "args": {
             (Argname): (Value or ReturnCode)        
         },
@@ -77,9 +78,13 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
         }    
     }
     """
+    #TODO: maybe move this somewhere better
+    pArgs.config.loadConfig(pArgs)
+    
     args = vars(pArgs)
     result: dict = {
         "ReturnCode": ReturnCodes.SUCCESS,
+        "Mode": "",
         "args": {
 
         },
@@ -96,7 +101,7 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
     result["args"]["emailLinks"] = args["emailLinks"]
     result["args"]["keepDeviceIds"] = args["keepDeviceIds"]
 
-    print(result)
+    # print(result)
     return result
 
 # extract the needed arguments into a dict to be given to the actual module and check if they are valid
@@ -104,6 +109,7 @@ def extractCompileArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),
+        "Mode": (Mode, the program is running in),
         "args": {
             (Argname): (Value or ReturnCode)        
         },
@@ -117,6 +123,7 @@ def extractCompileArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         result["ReturnCode"] = ReturnCodes.NO_ARGS_GIVEN
         return result
     result = extractCommonArgs(pArgs)
+    result["Mode"] = "Compile"
 
     if args["inputFile"] == None:
         result["ReturnCode"] = ReturnCodes.ERROR
@@ -147,6 +154,7 @@ def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),
+        "Mode": (Mode, the program is running in),
         "args": {
             (Argname): (Value or ReturnCode)        
         },
@@ -160,6 +168,7 @@ def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         result["ReturnCode"] = ReturnCodes.NO_ARGS_GIVEN
         return result
     result = extractCommonArgs(pArgs)
+    result["Mode"] = "Merge"
 
     #TODO: add autocompile support
     # result["args"]["compileCSV"] = args["compileCSV"]

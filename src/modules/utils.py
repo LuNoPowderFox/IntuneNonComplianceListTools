@@ -1,6 +1,7 @@
 from typing import List
 
 from modules import clUtils, MergeComplianceLists, CompileComplianceList
+from modules.config import Config
 import argparse
 
 def emptyFunc(tmp) -> None:
@@ -16,7 +17,7 @@ def createHelpParser(parser: argparse.ArgumentParser | None = None) -> None:
                         default="Help"
                         )
 
-def handleHelp(pArgs: argparse.Namespace | None = None) -> None:
+def handleHelp(pArgs: argparse.Namespace | None = None) -> dict | None:
     args = vars(pArgs)
     parserList = None
     helpMode = ""
@@ -33,6 +34,7 @@ def handleHelp(pArgs: argparse.Namespace | None = None) -> None:
     else:
         parserList["Help"].print_help()
 
+    return {"ReturnCode": clUtils.ReturnCodes.SUCCESS, "Mode": "Help"}
     ...
 
 def createGuiParser(parser: argparse.ArgumentParser | None = None) -> None:
@@ -53,6 +55,8 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             help="Show help message and exit the program"
                             )
     
+    mainParser.set_defaults(config=Config())
+
     commonOptions = argparse.ArgumentParser("General options", description="Options, that are for setting the general behaviour of the program")
     # generalOptions = mainParser.add_argument_group("General options", description="Options, that are for setting the general behaviour of the program")
     generalOptions = commonOptions.add_argument_group("General options", description="Options, that are for setting the general behaviour of the program")
@@ -113,7 +117,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             parents=[commonOptions]
                             )
     clUtils.createCompileParser(pParser=compileParser)
-    # compileParser.set_defaults(func=clUtils.extractCompileArgs)
     compileParser.set_defaults(func=CompileComplianceList.compileComplianceList)
 
     mergeParser = subParsers.add_parser(
@@ -125,7 +128,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             parents=[commonOptions]
                             )
     clUtils.createMergeParser(pParser=mergeParser)
-    # mergeParser.set_defaults(func=clUtils.extractMergeArgs)
     mergeParser.set_defaults(func=MergeComplianceLists.mergeComplianceLists)
 
     helpParser = subParsers.add_parser(
@@ -149,10 +151,5 @@ def createArgParser() -> argparse.ArgumentParser | None:
     parserList = {"Tools": mainParser, "Compile": compileParser, "Merge": mergeParser, "Help": helpParser, "GUI": guiParser}
     # so that the help function can access the parsers
     helpParser.set_defaults(parserList=parserList)
-
-    # args = mainParser.parse_args()
-    # argsP = args.func(args)
-    # # print(args)
-    # print(argsP)
 
     return mainParser

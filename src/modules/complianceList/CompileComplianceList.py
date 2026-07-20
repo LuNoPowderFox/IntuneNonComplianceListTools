@@ -129,6 +129,7 @@ def compileComplianceList(pArgs: argparse.Namespace) -> dict | None:
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),
+        "Mode": (Mode, the program is running in),
         "returnValues": {
             (Value): (Value or ReturnCode)        
         },
@@ -146,6 +147,7 @@ def compileComplianceList(pArgs: argparse.Namespace) -> dict | None:
     neededArgs: set = {"inputFile", "outputFile", "wantedOS", "deviceLinkSkip", "emailLinks", "keepDeviceIds"}
     result = {
         "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "Mode": args["Mode"],
         "returnValues": {},
         "args": {},
         "errorMessages": {}
@@ -157,7 +159,7 @@ def compileComplianceList(pArgs: argparse.Namespace) -> dict | None:
         result["errorMessages"] = args["errorMessages"]
         return result
 
-    print(f"args: {args}")
+    # print(f"args: {args}")
 
     if not "args" in args:
         result["ReturnCode"] = utils.ReturnCodes.NO_ARGS_GIVEN

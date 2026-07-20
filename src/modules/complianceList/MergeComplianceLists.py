@@ -313,6 +313,7 @@ def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),
+        "Mode": (Mode, the program is running in),
         "returnValues": {
             (Value): (Value or ReturnCode)        
         },
@@ -330,10 +331,12 @@ def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
     neededArgs: set = {"oldFile", "newFile", "mergedFile", "compileCSV", "wantedOS", "deviceLinkSkip", "emailLinks", "keepDeviceIds"}
     result = {
         "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "Mode": args["Mode"],
         "returnValues": {},
+        "args": {},
         "errorMessages": {}
     }
-    
+
     if not args["ReturnCode"] == utils.ReturnCodes.SUCCESS:
         result["ReturnCode"] = args["ReturnCode"]
         result["args"] = args["args"]

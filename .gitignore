@@ -1,6 +1,7 @@
 testExcel.py
 testPandas.py
 .vscode/
+.config/
 __pycache__/
 TestInput/
 .venv/

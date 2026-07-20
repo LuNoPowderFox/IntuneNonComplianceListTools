@@ -113,6 +113,7 @@ def setColorRules(sheet) -> None:
         ...
 
 def addNoteColumn(sheet) -> None:
+    #TODO: maybe do this before formating already
     print("Adding 'Notes' column...")
     if "Notes" in [cell.value for cell in sheet[1]]:
         sheet.column_dimensions[get_column_letter(sheet.max_column)].width = 30
