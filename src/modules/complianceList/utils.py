@@ -7,6 +7,7 @@ from ..config import ConfigTypes
 #TODO: add more codes if needed
 class ReturnCodes(Enum):
     SUCCESS = 0
+    PARTIAL_SUCCESS = -9
     ERROR = -1
     NO_ARGS_GIVEN = -2
     INVALID_ARGS = -3

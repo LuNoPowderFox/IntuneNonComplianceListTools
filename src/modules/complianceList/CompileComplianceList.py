@@ -125,7 +125,7 @@ def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: List, makeDevi
         tmpResult = processInput(df, os)
 
         if tmpResult["ReturnCode"] == utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
-            result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+            result["ReturnCode"] = utils.ReturnCodes.PARTIAL_SUCCESS
             result["args"]["wantedOS"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
             if "wantedOS" not in result["errorMessages"].keys():
                 result["errorMessages"]["wantedOS"] = f"The following OS's are not valid: {os}"
@@ -133,6 +133,10 @@ def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: List, makeDevi
                 result["errorMessages"]["wantedOS"] += f", {os}"
         else:
             tmp[os] = tmpResult["returnValues"]["processedData"]
+
+    if len(tmp.keys()) == 0:
+        result["ReturnCode"] = utils.ReturnCodes.ERROR
+        return result
 
     with pd.ExcelWriter(outputFile) as oFile:
         for os in tmp.keys():

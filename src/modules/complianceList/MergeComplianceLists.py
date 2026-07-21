@@ -400,7 +400,7 @@ def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
         print("")
 
         if tmpResult["ReturnCode"] == utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
-            result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+            result["ReturnCode"] = utils.ReturnCodes.PARTIAL_SUCCESS
             result["args"]["wantedOS"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
             if "wantedOS" not in result["errorMessages"].keys():
                 result["errorMessages"]["wantedOS"] = f"The following OS's are not valid: {os}"
@@ -408,6 +408,10 @@ def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
                 result["errorMessages"]["wantedOS"] += f", {os}"
         else:
             tmp[os] = tmpResult["returnValues"]["mergedData"]
+
+    if len(tmp.keys()) == 0:
+        result["ReturnCode"] = utils.ReturnCodes.ERROR
+        return result
 
     with pd.ExcelWriter(outputPath) as oFile:
         for os in tmp.keys():
