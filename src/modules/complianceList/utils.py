@@ -2,6 +2,7 @@ from enum import Enum
 import argparse
 import os
 import re
+from ..config import ConfigTypes
 
 #TODO: add more codes if needed
 class ReturnCodes(Enum):
@@ -14,7 +15,7 @@ class ReturnCodes(Enum):
     MISSING_INPUT_FILE = -6
     INVALID_INPUT_FILE_PATH = -7
     MISSING_ARGS = -8
-    # COMPLIANCE_LIST_INVALID_OS = -20
+    COMPLIANCE_LIST_INVALID_OS = -20
 
 def createCompileParser(pParser: argparse.ArgumentParser | None = None, isStandalone: bool = False) -> argparse.ArgumentParser | None:
     parser: argparse.ArgumentParser = pParser
@@ -80,6 +81,12 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
     """
     #TODO: maybe move this somewhere better
     pArgs.config.loadConfig(pArgs)
+
+    # print(f"All: {pArgs.config.getConfig(ConfigTypes.All)}")
+    # print(f"Formating: {pArgs.config.getConfig(ConfigTypes.Formating)}")
+    # print(f"Formating colors/*: {pArgs.config.getConfig(ConfigTypes.Formating, "colors/*")}")
+    # print(f"Formating colors/*/headerBackgroundColor: {pArgs.config.getConfig(ConfigTypes.Formating, "colors/*/headerBackgroundColor")}")
+    # print(f"Formating colors/*/headerBackgroundColor/bliblablub: {pArgs.config.getConfig(ConfigTypes.Formating, "colors/*/headerBackgroundColor/bliblablub")}")
     
     args = vars(pArgs)
     result: dict = {
@@ -94,14 +101,16 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
     }
 
     if args["wantedOS"] is None:
-        result["args"]["wantedOS"] = "Windows"
+        # result["args"]["wantedOS"] = "Windows"
+        tmp = pArgs.config.getConfig(ConfigTypes.StandartVals, "wantedOS")
+        result["args"]["wantedOS"] = tmp["wantedOS"] if tmp is not None else None
     else:
         result["args"]["wantedOS"] = args["wantedOS"]
+    #TODO: maybe get the standart vals from the config here as well (not sure how yet)
     result["args"]["deviceLinkSkip"] = args["deviceLinkSkip"]
     result["args"]["emailLinks"] = args["emailLinks"]
     result["args"]["keepDeviceIds"] = args["keepDeviceIds"]
 
-    # print(result)
     return result
 
 # extract the needed arguments into a dict to be given to the actual module and check if they are valid

@@ -137,11 +137,11 @@ def setHeaderColors(sheet) -> None:
         else:
             cell.fill = gray
 
-def convertToTable(sheet) -> None:
+def convertToTable(sheet, sheetName: str) -> None:
     print("Converting cells into a table...")
     colLetter = get_column_letter(sheet.max_column)
     cellRange = f"A1:{colLetter}{sheet.max_row}"
-    tab = Table(displayName="Tabelle1", ref=cellRange)
+    tab = Table(displayName=f"Tabelle1_{sheetName}", ref=cellRange)
 
     style = TableStyleInfo(name="TableStyleLight15", showFirstColumn=True,
                        showLastColumn=False, showRowStripes=True, showColumnStripes=True)
@@ -149,11 +149,15 @@ def convertToTable(sheet) -> None:
 
     sheet.add_table(tab)
 
-def formatExcel(filePath: str, keepDeviceIdColumn: bool = True, createDeviceLinks: bool = True, createEmailLinks: bool = False) -> None:
+def formatExcel(filePath: str, sheetName: str = "Windows", keepDeviceIdColumn: bool = True, createDeviceLinks: bool = True, createEmailLinks: bool = False) -> None:
     wb = load_workbook(filePath)
-    sheet = wb.active
+    # sheet = wb.active
+    sheet = wb[sheetName] if sheetName in wb else None
 
-    print(f"Formatting excel spreadsheet '{filePath}'...")
+    if not sheet:
+        return
+
+    print(f"Formatting excel spreadsheet '{sheetName}' in file '{filePath}'...")
 
     if createDeviceLinks:
         formatOverviewLinks(sheet, keepColumn=keepDeviceIdColumn)
@@ -168,6 +172,6 @@ def formatExcel(filePath: str, keepDeviceIdColumn: bool = True, createDeviceLink
 
     addNoteColumn(sheet)
     setHeaderColors(sheet)
-    convertToTable(sheet)
+    convertToTable(sheet, sheetName)
 
     wb.save(filePath)

@@ -1,5 +1,8 @@
-USE_CELL_VALUE = 9999
-GENERATE_VALUE = 9998
+from enum import Enum
+
+class ConfigMagicValues(Enum):
+    USE_CELL_VALUE = 9999
+    GENERATE_VALUE = 9998
 
 _standartConf: dir = {
     "configProfileName": "DefaultNonCompliance",
@@ -112,7 +115,21 @@ _standartConf: dir = {
                     }
                 }
             }
-        }
+        },
+        "links": {
+            "Device Overview": {
+                "link": "https://intune.microsoft.com/#view/Microsoft_Intune_Devices/DeviceSettingsMenuBlade/~/properties/mdmDeviceId/{value}",
+                "fillValuePattern": ConfigMagicValues.USE_CELL_VALUE.value, #TODO: maybe add an encoder for json for this https://stackoverflow.com/questions/24481852/serialising-an-enum-member-to-json/24482806#24482806
+                "applyTo": ["Gerätename"],
+                "exclude": []
+            },
+            "Email Shortcut": {
+                "link": "https://teams.microsoft.com/l/chat/0/0?users={value}",
+                "fillValuePattern": ConfigMagicValues.USE_CELL_VALUE.value,
+                "applyTo": ["Benutzer-E-Mail"],
+                "exclude": []
+            }
+        },
     },
     "columns": {
         "Windows": {
@@ -140,20 +157,6 @@ _standartConf: dir = {
     },
     "valueGen": {
 
-    },
-    "links": {
-        "Device Overview": {
-            "link": "https://intune.microsoft.com/#view/Microsoft_Intune_Devices/DeviceSettingsMenuBlade/~/properties/mdmDeviceId/{value}",
-            "fillValuePattern": USE_CELL_VALUE,
-            "applyTo": ["Gerätename"],
-            "exclude": []
-        },
-        "Email Shortcut": {
-            "link": "https://teams.microsoft.com/l/chat/0/0?users={value}",
-            "fillValuePattern": USE_CELL_VALUE,
-            "applyTo": ["Benutzer-E-Mail"],
-            "exclude": []
-        }
     },
     "standartVals": {
         "wantedOS": ["Windows"],

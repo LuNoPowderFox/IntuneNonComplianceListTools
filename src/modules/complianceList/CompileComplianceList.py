@@ -4,20 +4,34 @@ from .formatExcel import formatExcel #as fE
 from . import utils
 from typing import List
 import getopt, sys
-import re
+import re, copy
 
 def addToColumnOder(columnOrder, problemList, problem):
     if problem in problemList and problem not in columnOrder:
         columnOrder.append(problem)
 
-def processInput(df: pd.DataFrame, wantedOS: str) -> pd.DataFrame | bool:
+def processInput(pDF: pd.DataFrame, wantedOS: str) -> dict | pd.DataFrame:
+    # to not remove stuff from the original df
+    df = copy.deepcopy(pDF)
     processedList: List = []
     processedData: pd.DataFrame
     hasDeviceID: bool = False
+    result = {
+        "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "returnValues": {
 
-    if wantedOS not in df['OS'].values:
-        #sys.exit(f"No entries for the OS '{wantedOS}' found. Exiting...")
-        pass
+        },
+        "args": {
+
+        },
+        "errorMessages": {
+            
+        }
+    }
+
+    if wantedOS not in pDF['OS'].values:
+        result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+        return result
 
     for x in df.index:
         if wantedOS not in df.loc[x, "OS"]:
@@ -89,41 +103,68 @@ def processInput(df: pd.DataFrame, wantedOS: str) -> pd.DataFrame | bool:
 
     processedData = pd.DataFrame(processedList)
     processedData = processedData[columnOrder]
-    return processedData
+    result["returnValues"]["processedData"] = processedData
+    return result
 
 # TODO: return false if compile fails
-def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: str, makeDeviceLinks: bool = True, 
-                       makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> bool | None:
+def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: List, makeDeviceLinks: bool = True, 
+                       makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> dict | None:
     df = pd.read_csv(inputFile)
+    result = {
+        "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "args": {
 
-    processedData = processInput(df, wantedOS)
+        },
+        "errorMessages": {
 
-    processedData.to_excel(outputFile, index=False, sheet_name=wantedOS)
-    formatExcel(outputFile, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+        }
+    }
+    tmp = {}
 
-# Check the args and run the compile
-# Return output File path
-def checkArgs(inputFilePath: str, outputFilePath: str, wantedOS: str | List[str] | None, makeDeviceLinks: bool = True, 
-                       makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> str | bool | None:
+    for os in wantedOS:
+        tmpResult = processInput(df, os)
+
+        if tmpResult["ReturnCode"] == utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
+            result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+            result["args"]["wantedOS"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+            if "wantedOS" not in result["errorMessages"].keys():
+                result["errorMessages"]["wantedOS"] = f"The following OS's are not valid: {os}"
+            else:
+                result["errorMessages"]["wantedOS"] += f", {os}"
+        else:
+            tmp[os] = tmpResult["returnValues"]["processedData"]
+
+    with pd.ExcelWriter(outputFile) as oFile:
+        for os in tmp.keys():
+            tmp[os].to_excel(oFile, index=False, sheet_name=os)
+    for os in tmp.keys():
+        formatExcel(outputFile, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn, sheetName=os)
+
+    return result
+
+# # Check the args and run the compile
+# # Return output File path
+# def checkArgs(inputFilePath: str, outputFilePath: str, wantedOS: str | List[str] | None, makeDeviceLinks: bool = True, 
+#                        makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> str | bool | None:
     
-    inputFile = inputFilePath
-    outputFile = outputFilePath
+#     inputFile = inputFilePath
+#     outputFile = outputFilePath
 
-    if inputFile is None:
-        sys.exit("Error, no input file given! Please set the input file with '-i' or '--InputFile'. \nFor more help use '-h' or '--Help'")
-        inputFile = "TestInput\\NoncompliantDevicesAndSettingsV3_6453c22b-7b10-4194-adc9-8ee459d924bf.csv"
-    elif not inputFile.endswith(".csv"):
-        sys.exit("Error, given input file is possibly not correct file type!\nPlease give a file with the '.csv' extension")
-    if outputFile is None:
-        outputFile = re.sub(".csv$", ".xlsx", inputFile)
-        print(f"Set output file to '{outputFile}'")
-    if wantedOS is None:
-        #TODO: allow multiple OS's
-        wantedOS = "Windows"
+#     if inputFile is None:
+#         sys.exit("Error, no input file given! Please set the input file with '-i' or '--InputFile'. \nFor more help use '-h' or '--Help'")
+#         inputFile = "TestInput\\NoncompliantDevicesAndSettingsV3_6453c22b-7b10-4194-adc9-8ee459d924bf.csv"
+#     elif not inputFile.endswith(".csv"):
+#         sys.exit("Error, given input file is possibly not correct file type!\nPlease give a file with the '.csv' extension")
+#     if outputFile is None:
+#         outputFile = re.sub(".csv$", ".xlsx", inputFile)
+#         print(f"Set output file to '{outputFile}'")
+#     if wantedOS is None:
+#         #TODO: allow multiple OS's
+#         wantedOS = "Windows"
 
-    convertDataToExcel(inputFile=inputFile, outputFile=outputFile, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
-    if outputFilePath is None:
-        return outputFile
+#     convertDataToExcel(inputFile=inputFile, outputFile=outputFile, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+#     if outputFilePath is None:
+#         return outputFile
 
 def compileComplianceList(pArgs: argparse.Namespace) -> dict | None:
     """Return dictionary structure:
@@ -170,67 +211,68 @@ def compileComplianceList(pArgs: argparse.Namespace) -> dict | None:
 
     inputFile: str = args["args"]["inputFile"]
     outputFile: str = args["args"]["outputFile"]
-    wantedOS: str | List[str] = args["args"]["wantedOS"]
+    wantedOS: List[str] = args["args"]["wantedOS"]
     makeDeviceLinks: bool = not args["args"]["deviceLinkSkip"]
     makeEmailLinks: bool = args["args"]["emailLinks"]
     keepDeviceIdColumn: bool = args["args"]["keepDeviceIds"]
     
     tmp = convertDataToExcel(inputFile=inputFile, outputFile=outputFile, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    result = result | tmp
     
     #TODO: add more error handling during the compile
-    result["returnValues"]["outputFile"] = outputFile
+    if result["ReturnCode"] == utils.ReturnCodes.SUCCESS:
+        result["returnValues"]["outputFile"] = outputFile
     return result
-    ...
 
-if __name__ == "__main__":
-    args = sys.argv[1:]
-    options = "hi:o:w:dek"
-    long_options = ["Help", "InputFile=", "OutputFile=", "WantedOS=", "DeviceLinksSkip", "EmailLinks", "KeepDeviceIds"]
+# if __name__ == "__main__":
+#     args = sys.argv[1:]
+#     options = "hi:o:w:dek"
+#     long_options = ["Help", "InputFile=", "OutputFile=", "WantedOS=", "DeviceLinksSkip", "EmailLinks", "KeepDeviceIds"]
 
-    inputFilePath: str = None
-    outputFilePath: str = None
-    wantedOS: str = None
-    makeDeviceLinks = True
-    makeEmailLinks = False
-    keepDeviceIdColumn = False
+#     inputFilePath: str = None
+#     outputFilePath: str = None
+#     wantedOS: str = None
+#     makeDeviceLinks = True
+#     makeEmailLinks = False
+#     keepDeviceIdColumn = False
 
-    try:
-        arguments, values = getopt.getopt(args, options, long_options)
-        if len(arguments) == 0:
-            print("No arguments given, displaying help and exiting...")
-            utils.showCompileHelp()
-            exit(0)
-        for currentArg, currentVal in arguments:
-            if currentArg in ("-h", "--Help"):
-                print("Showing Help")
-                utils.showCompileHelp()
-                exit(0)
-            elif currentArg in ("-i", "--InputFile"):
-                inputFilePath = currentVal
-            elif currentArg in ("-o", "--Output"):
-                outputFilePath = currentVal
-            elif currentArg in ("-w", "--WantedOS"):
-                wantedOS = currentVal
-            elif currentArg in ("-d", "--DeviceLinkSkip"):
-                makeDeviceLinks = False
-            elif currentArg in ("-e", "--EmailLinks"):
-                makeEmailLinks = True
-            elif currentArg in ("-k", "--KeepDeviceIds"):
-                keepDeviceIdColumn = True
-    except getopt.error as err:
-        print(str(err))
+#     try:
+#         arguments, values = getopt.getopt(args, options, long_options)
+#         if len(arguments) == 0:
+#             print("No arguments given, displaying help and exiting...")
+#             utils.showCompileHelp()
+#             exit(0)
+#         for currentArg, currentVal in arguments:
+#             if currentArg in ("-h", "--Help"):
+#                 print("Showing Help")
+#                 utils.showCompileHelp()
+#                 exit(0)
+#             elif currentArg in ("-i", "--InputFile"):
+#                 inputFilePath = currentVal
+#             elif currentArg in ("-o", "--Output"):
+#                 outputFilePath = currentVal
+#             elif currentArg in ("-w", "--WantedOS"):
+#                 wantedOS = currentVal
+#             elif currentArg in ("-d", "--DeviceLinkSkip"):
+#                 makeDeviceLinks = False
+#             elif currentArg in ("-e", "--EmailLinks"):
+#                 makeEmailLinks = True
+#             elif currentArg in ("-k", "--KeepDeviceIds"):
+#                 keepDeviceIdColumn = True
+#     except getopt.error as err:
+#         print(str(err))
 
-    # if inputFilePath is None:
-    #     sys.exit("Error, no input file given! Please set the input file with '-i' or '--InputFile'. \nFor more help use '-h' or '--Help'")
-    #     inputFilePath = "TestInput\\NoncompliantDevicesAndSettingsV3_6453c22b-7b10-4194-adc9-8ee459d924bf.csv"
-    # elif not inputFilePath.endswith(".csv"):
-    #     sys.exit("Error, given input file is possibly not correct file type!\nPlease give a file with the '.csv' extension")
-    # if outputFilePath is None:
-    #     outputFilePath = re.sub(".csv$", ".xlsx", inputFilePath)
-    #     print(f"Set output file to '{outputFilePath}'")
-    # if wantedOS is None:
-    #     wantedOS = "Windows"
+#     # if inputFilePath is None:
+#     #     sys.exit("Error, no input file given! Please set the input file with '-i' or '--InputFile'. \nFor more help use '-h' or '--Help'")
+#     #     inputFilePath = "TestInput\\NoncompliantDevicesAndSettingsV3_6453c22b-7b10-4194-adc9-8ee459d924bf.csv"
+#     # elif not inputFilePath.endswith(".csv"):
+#     #     sys.exit("Error, given input file is possibly not correct file type!\nPlease give a file with the '.csv' extension")
+#     # if outputFilePath is None:
+#     #     outputFilePath = re.sub(".csv$", ".xlsx", inputFilePath)
+#     #     print(f"Set output file to '{outputFilePath}'")
+#     # if wantedOS is None:
+#     #     wantedOS = "Windows"
 
-    # convertDataToExcel(inputFilePath, outputFilePath, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+#     # convertDataToExcel(inputFilePath, outputFilePath, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
     
-    checkArgs(inputFilePath, outputFilePath, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+#     checkArgs(inputFilePath, outputFilePath, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)

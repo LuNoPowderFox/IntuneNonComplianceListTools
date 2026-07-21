@@ -261,8 +261,7 @@ def compareOldData(oldData: pd.DataFrame, newData: pd.DataFrame, columnList: Lis
 
     return resultData
 
-def _mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = None, wantedOS: str | List[str] = "Windows", 
-                         makeDeviceLinks: bool = True, makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> dict | None:
+def _mergeComplianceLists(oldListPath: str, newListPath: str, wantedOS: str | List[str] = "Windows") -> dict | None:
     # 1. check which devices from oldData are also still in newData
     # 1.1 compare the problem columns, using newData as the newer state and update accordingly
     # 1.2 compare the notes from those devices and keep the new ones + maybe the old notes in brackets [] after that
@@ -273,15 +272,49 @@ def _mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = 
     # 3.1 keep those devices as is from newData
     # 3.2 keep the notes from those devices from newData^
     # 4 create column showing if the data changed
+    result = {
+        "ReturnCode": utils.ReturnCodes.SUCCESS,
+        "returnValues": {
+
+        },
+        "args": {
+
+        },
+        "errorMessages": {
+            
+        }
+    }
     mergedData: pd.DataFrame = None
-    #wantedOS = "Windows"
-    oldData = pd.read_excel(oldListPath, sheet_name=wantedOS, engine="openpyxl").fillna('')
-    newData = pd.read_excel(newListPath, sheet_name=wantedOS, engine="openpyxl").fillna('')
+    print(f"Merging data for OS '{wantedOS}'...")
     
     oldWb = load_workbook(oldListPath)
-    oldSheet = oldWb.active
     newWb = load_workbook(newListPath)
-    newSheet = newWb.active
+    
+    if wantedOS in oldWb:
+        oldData = pd.read_excel(oldListPath, sheet_name=wantedOS, engine="openpyxl").fillna('')
+    if wantedOS in newWb:
+        newData = pd.read_excel(newListPath, sheet_name=wantedOS, engine="openpyxl").fillna('')
+    
+    if wantedOS not in oldWb and wantedOS in newWb:
+        #TODO: in this case, it should just return the new data
+        print(f"OS '{wantedOS}' only found in new data...")
+        result["returnValues"]["mergedData"] = newData
+        return result
+    if wantedOS not in newWb and wantedOS in oldWb:
+        print(f"OS '{wantedOS}' only found in old data...")
+        #TODO: in this case, it should just return the old data
+        result["returnValues"]["mergedData"] = oldData
+        return result
+    if wantedOS not in oldWb and wantedOS not in newWb:
+        #TODO: in this case, return utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+        result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+        return result
+    
+
+    # oldSheet = oldWb.active
+    # newSheet = newWb.active
+    oldSheet = oldWb[wantedOS]
+    newSheet = newWb[wantedOS]
 
     oldLinks = getHyperlinks(sheet=oldSheet)
     newLinks = getHyperlinks(sheet=newSheet)
@@ -305,9 +338,9 @@ def _mergeComplianceLists(oldListPath: str, newListPath: str, outputPath: str = 
 
     mergedData = compareOldData(oldData=oldData, newData=newData, columnList=columnList, hasDeviceIds=hasDeviceIds)
 
-    mergedData.to_excel(outputPath, index=False, sheet_name=wantedOS)
-    print("")
-    formatExcel(outputPath, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    result["returnValues"]["mergedData"] = mergedData
+
+    return result
 
 def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
     """Return dictionary structure:
@@ -343,7 +376,7 @@ def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
         result["errorMessages"] = args["errorMessages"]
         return result
 
-    print(f"args: {args}")
+    # print(f"args: {args}")
 
     if not "args" in args:
         result["ReturnCode"] = utils.ReturnCodes.NO_ARGS_GIVEN
@@ -355,84 +388,105 @@ def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
     oldListPath: str = args["args"]["oldFile"]
     newListPath: str = args["args"]["newFile"]
     outputPath: str = args["args"]["mergedFile"]
-    wantedOS: str | List[str] = args["args"]["wantedOS"]
+    wantedOS: List[str] = args["args"]["wantedOS"]
     makeDeviceLinks: bool = not args["args"]["deviceLinkSkip"]
     makeEmailLinks: bool = args["args"]["emailLinks"]
     keepDeviceIdColumn: bool = args["args"]["keepDeviceIds"]
     
-    tmp = _mergeComplianceLists(oldListPath=oldListPath, newListPath=newListPath, outputPath=outputPath, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    tmp = {}
+
+    for os in wantedOS:
+        tmpResult = _mergeComplianceLists(oldListPath=oldListPath, newListPath=newListPath, wantedOS=os)
+        print("")
+
+        if tmpResult["ReturnCode"] == utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
+            result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+            result["args"]["wantedOS"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+            if "wantedOS" not in result["errorMessages"].keys():
+                result["errorMessages"]["wantedOS"] = f"The following OS's are not valid: {os}"
+            else:
+                result["errorMessages"]["wantedOS"] += f", {os}"
+        else:
+            tmp[os] = tmpResult["returnValues"]["mergedData"]
+
+    with pd.ExcelWriter(outputPath) as oFile:
+        for os in tmp.keys():
+            tmp[os].to_excel(oFile, index=False, sheet_name=os)
+    for os in tmp.keys():
+        formatExcel(outputPath, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn, sheetName=os)
+        print("")
     
     #TODO: add more error handling during the compile
     result["returnValues"]["mergedFile"] = outputPath
     return result
 
-if __name__ == "__main__":
-    args = sys.argv[1:]
-    options = "ho:n:w:m:dekc"
-    long_options = ["Help", "OldFile=", "NewFile=", "WantedOS=", "MergedFile=", "DeviceLinksSkip", "EmailLinks", "KeepDeviceIds", "CompileCSV"]
+# if __name__ == "__main__":
+#     args = sys.argv[1:]
+#     options = "ho:n:w:m:dekc"
+#     long_options = ["Help", "OldFile=", "NewFile=", "WantedOS=", "MergedFile=", "DeviceLinksSkip", "EmailLinks", "KeepDeviceIds", "CompileCSV"]
 
-    inputFilePath: str = None
-    outputFilePath: str = None
-    wantedOS: str = None
-    makeDeviceLinks = True
-    makeEmailLinks = False
-    keepDeviceIdColumn = False
-    compileCSV = False
+#     inputFilePath: str = None
+#     outputFilePath: str = None
+#     wantedOS: str = None
+#     makeDeviceLinks = True
+#     makeEmailLinks = False
+#     keepDeviceIdColumn = False
+#     compileCSV = False
 
-    try:
-        arguments, values = getopt.getopt(args, options, long_options)
-        print(arguments)
-        print(values)
-        if len(arguments) == 0:
-            print("No arguments given, displaying help and exiting...")
-            utils.showMergeHelp()
-            exit(0)
-        for currentArg, currentVal in arguments:
-            if currentArg in ("-h", "--Help"):
-                print("Showing Help")
-                utils.showMergeHelp()
-                exit(0)
-            elif currentArg in ("-o", "--OldFile"):
-                oldFilePath = currentVal
-            elif currentArg in ("-n", "--NewFile"):
-                newFilePath = currentVal
-            elif currentArg in ("-m", "--MergedFile"):
-                outputFilePath = currentVal
-            elif currentArg in ("-w", "--WantedOS"):
-                #TODO: allow multiple OS's to put them into their respective sheets
-                wantedOS = currentVal
-            elif currentArg in ("-d", "--DeviceLinkSkip"):
-                makeDeviceLinks = False
-            elif currentArg in ("-e", "--EmailLinks"):
-                makeEmailLinks = True
-            elif currentArg in ("-k", "--KeepDeviceIds"):
-                keepDeviceIdColumn = True
-            elif currentArg in ("-c", "--CompileCSV"):
-                compileCSV = True
-    except getopt.error as err:
-        print(str(err))
+#     try:
+#         arguments, values = getopt.getopt(args, options, long_options)
+#         print(arguments)
+#         print(values)
+#         if len(arguments) == 0:
+#             print("No arguments given, displaying help and exiting...")
+#             utils.showMergeHelp()
+#             exit(0)
+#         for currentArg, currentVal in arguments:
+#             if currentArg in ("-h", "--Help"):
+#                 print("Showing Help")
+#                 utils.showMergeHelp()
+#                 exit(0)
+#             elif currentArg in ("-o", "--OldFile"):
+#                 oldFilePath = currentVal
+#             elif currentArg in ("-n", "--NewFile"):
+#                 newFilePath = currentVal
+#             elif currentArg in ("-m", "--MergedFile"):
+#                 outputFilePath = currentVal
+#             elif currentArg in ("-w", "--WantedOS"):
+#                 #TODO: allow multiple OS's to put them into their respective sheets
+#                 wantedOS = currentVal
+#             elif currentArg in ("-d", "--DeviceLinkSkip"):
+#                 makeDeviceLinks = False
+#             elif currentArg in ("-e", "--EmailLinks"):
+#                 makeEmailLinks = True
+#             elif currentArg in ("-k", "--KeepDeviceIds"):
+#                 keepDeviceIdColumn = True
+#             elif currentArg in ("-c", "--CompileCSV"):
+#                 compileCSV = True
+#     except getopt.error as err:
+#         print(str(err))
 
-    #TODO: detect if either input file is .csv and ask to autocompile it 
+#     #TODO: detect if either input file is .csv and ask to autocompile it 
 
-    if oldFilePath is None:
-        sys.exit("Error, no input file for old data given! Please set the input file with '-o' or '--OldFile'. \nFor more help use '-h' or '--Help'")
-    # elif oldFilePath.endswith(".csv"):
-    #     print("Warning, given input file for old data is a .csv file!")
-    #     if not compileCSV:
-    #         confirm = input("Do you want to try and compile it? ('y'/['n']): ")
-    #     if compileCSV or confirm:
-    #         ccl.checkArgs(inputFilePath=oldFilePath, )
-    #     pass
-    elif not oldFilePath.endswith(".xlsx"):
-        sys.exit("Error, given input file for old data is possibly not correct file type!\nPlease give a file with the '.xlsx' extension")
-    if newFilePath is None:
-        sys.exit("Error, no input file for new data given! Please set the input file with '-n' or '--NewFile'. \nFor more help use '-h' or '--Help'")
-    elif not newFilePath.endswith(".xlsx"):
-        sys.exit("Error, given input file for new data is possibly not correct file type!\nPlease give a file with the '.xlsx' extension")
-    if outputFilePath is None:
-        outputFilePath = f"{oldFilePath.removesuffix(".xlsx")}-{newFilePath.split("\\")[-1].removesuffix(".xlsx")}_merged.xlsx"
-        print(f"Set output file to '{outputFilePath}'")
-    if wantedOS is None:
-        wantedOS = "Windows"
+#     if oldFilePath is None:
+#         sys.exit("Error, no input file for old data given! Please set the input file with '-o' or '--OldFile'. \nFor more help use '-h' or '--Help'")
+#     # elif oldFilePath.endswith(".csv"):
+#     #     print("Warning, given input file for old data is a .csv file!")
+#     #     if not compileCSV:
+#     #         confirm = input("Do you want to try and compile it? ('y'/['n']): ")
+#     #     if compileCSV or confirm:
+#     #         ccl.checkArgs(inputFilePath=oldFilePath, )
+#     #     pass
+#     elif not oldFilePath.endswith(".xlsx"):
+#         sys.exit("Error, given input file for old data is possibly not correct file type!\nPlease give a file with the '.xlsx' extension")
+#     if newFilePath is None:
+#         sys.exit("Error, no input file for new data given! Please set the input file with '-n' or '--NewFile'. \nFor more help use '-h' or '--Help'")
+#     elif not newFilePath.endswith(".xlsx"):
+#         sys.exit("Error, given input file for new data is possibly not correct file type!\nPlease give a file with the '.xlsx' extension")
+#     if outputFilePath is None:
+#         outputFilePath = f"{oldFilePath.removesuffix(".xlsx")}-{newFilePath.split("\\")[-1].removesuffix(".xlsx")}_merged.xlsx"
+#         print(f"Set output file to '{outputFilePath}'")
+#     if wantedOS is None:
+#         wantedOS = "Windows"
 
-    _mergeComplianceLists(oldListPath=oldFilePath, newListPath=newFilePath, outputPath=outputFilePath, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+#     _mergeComplianceLists(oldListPath=oldFilePath, newListPath=newFilePath, outputPath=outputFilePath, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)

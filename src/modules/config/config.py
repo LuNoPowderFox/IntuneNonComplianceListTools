@@ -48,6 +48,13 @@ class Config:
                     }
                 }
             }
+        },
+        "links": {
+        (linkName): {
+            "link": (hyperlink with placeholder if needed),
+            "fillValuePattern": (pattern for value to replace the placeholder or magic Value, indicating the cell value to be used),
+            "applyTo": (columnName/maybe pattern for specific cells (later); can be a list),
+            "exclude": (columName/maybe pattern for specific cells(later); can be a list; Used if "applyTo" is left empty)
         }
     }
    
@@ -56,7 +63,7 @@ class Config:
         (name of the sheet/OS to apply this to; '*' for all as fallback/default): {
             "keepColumns": (list of column Names),
             "excludeColumns": (list of column Names),
-            "keepRest": (bool to determine whether columns, that haven't been mentioned yet, should be kept as well or not),
+            "keepRest": (bool to determine whether columns, that haven't been mentioned yet, should be kept as well or not; if yes, they will be put between the columns specified in 'columnOrderStart' and 'columnOrderEnd'),
             "extraColumns": (list of columns to add at the end if not present, for example Notes),
             "columnOrderStart": (list of the columns in the wanted order at the start),
             "columnOrderEnd": (list of the columns in the wanted order at the end)
@@ -77,16 +84,6 @@ class Config:
             (argName): (ruleset for generation (not sure how yet))
         }
     }
-    
-    Configs for links
-    dir: {
-        (linkName): {
-            "link": (hyperlink with placeholder if needed),
-            "fillValuePattern": (pattern for value to replace the placeholder or magic Value, indicating the cell value to be used),
-            "applyTo": (columnName/maybe pattern for specific cells (later); can be a list),
-            "exclude": (columName/maybe pattern for specific cells(later); can be a list; Used if "applyTo" is left empty)
-        }
-    }
 
     Configs for standart values
     dir: {
@@ -97,6 +94,7 @@ class Config:
     """
 
     def __init__(self):
+        self._isEditable: bool = False
         self.configProfileName: str = ""
         self._configPath: str = ""
         self._conf: dir = {}
@@ -104,7 +102,6 @@ class Config:
         self._columns: dir = {}
         self._mergeBehaviour: dir = {}
         self._valueGen: dir = {}
-        self._links: dir = {}
         self._standartgVals: dir = {}
 
 
@@ -114,12 +111,12 @@ class Config:
         else:
             self._conf = pConf
 
+        self._isEditable = False
         self.configProfileName = self._conf["configProfileName"]
         self._format = self._conf["formating"]
         self._columns = self._conf["columns"]
         self._mergeBehaviour = self._conf["mergeBehaviour"]
         self._valueGen = self._conf["valueGen"]
-        self._links = self._conf["links"]
         self._standartgVals = self._conf["standartVals"]
         ...
     
@@ -155,18 +152,47 @@ class Config:
         # print(self._configPath)
         self._loadConfigFromFile()
 
+    def __getConfigValue(self, configDir: dir, configName: str) -> dict | None:
+        valuePath = configName.split("/")
+        returnDir = configDir
+        tmp = returnDir
+        for i, value in enumerate(valuePath):
+            if type(tmp) == dict and value in tmp.keys():
+                tmp = tmp[value]
+            else:
+                tmp = None
+                break
+                
+        if tmp is not None and type(tmp) != dict:
+                    returnDir = {valuePath[-1]: tmp}
+        else:
+            returnDir = tmp
+        return returnDir
+
     def getConfig(self, configName: ConfigTypes, configValue: str | None = None) -> dict | None:
+        """
+        Get values from the config
+
+        :param ConfigTypes configName: The part of the config to retrieve
+        :param configValue: the name/path of the config to get, separated by '/' (for example in Formating: "colors/*/headerBackgroundColor" for just the value 'headerBackgroundColor' or "colors/*" for all values of that config) [Optional]
+        :type configValue: str | None
+        :return: The wanted config or None if not found
+        :rtype: dict | None
+        """
+        returnDir = None
         match configName:
+            case ConfigTypes.All:
+                returnDir = self._conf
             case ConfigTypes.Formating:
-                return self._format
+                returnDir = self._format
             case ConfigTypes.Columns:
-                return self._columns
+                returnDir = self._columns
             case ConfigTypes.MergeBehaviour:
-                return self._mergeBehaviour
+                returnDir = self._mergeBehaviour
             case ConfigTypes.ValueGen:
-                return self._valueGen
-            case ConfigTypes.Links:
-                return self._links
+                returnDir = self._valueGen
             case ConfigTypes.StandartVals:
-                return self._standartgVals
-        ...
+                returnDir = self._standartgVals
+        if returnDir is not None and configValue is not None:
+            returnDir = self.__getConfigValue(returnDir, configValue)
+        return returnDir
