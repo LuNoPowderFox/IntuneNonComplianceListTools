@@ -2,6 +2,8 @@
 
 Compile exported Intune reports for Noncompliant devices into a formated excel spreadsheet or merge 2 lists with each other, to update the data.
 
+Note: this is already usable, just features like config files, GUI and more are still WIP
+
 ## Requirements
 
 ### Python libraries
@@ -75,7 +77,7 @@ Main script
 - [ ] clean up the mess i made... (in progress)
 - [ ] GUI
 - [ ] Better config
-- [ ] Autocompile .csv
+- [x] Autocompile .csv
 - [ ] Check .csv for validity
 - [ ] Automatically retrieve new data from Intune
 - [ ] Automatically retrieve old list
@@ -88,9 +90,8 @@ Main script
 - [x] move modules into a folder
 - [x] make the modules check the given arguments and return a dictionary, containing the return status code and either error messages or
   other needed output in case of success
-- [ ] let the modules be able to still be called by themselves (provided they have access to their dependancy modules) TODO: fix the import error from no found parent package (will probably not do this)
-- [ ] main functions of the modules should receive a dictionary with all arguments and settings (maybe the settings over smth else) (in progress)
-- [ ] maybe switch existing argument handling to argparse (it has support for options with multiple args) (in progress)
+- [x] main functions of the modules should receive a dictionary with all arguments and settings (maybe the settings over smth else) (in progress)
+- [x] maybe switch existing argument handling to argparse (it has support for options with multiple args) (in progress)
 
 ### GUI
 

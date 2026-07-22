@@ -11,7 +11,6 @@ def createHelpParser(parser: argparse.ArgumentParser | None = None) -> None:
     #TODO: make the help list better
     parser.add_argument(
                         dest="helpMode", 
-                        # choices=["All", "Tools", "Help", "Compile", "Merge", "GUI"],
                         choices=["Tools", "Help", "Compile", "Merge", "GUI"],
                         nargs="?",
                         default="Help"
@@ -35,10 +34,8 @@ def handleHelp(pArgs: argparse.Namespace | None = None) -> dict | None:
         parserList["Help"].print_help()
 
     return {"ReturnCode": clUtils.ReturnCodes.SUCCESS, "Mode": "Help"}
-    ...
 
 def createGuiParser(parser: argparse.ArgumentParser | None = None) -> None:
-    
     ...
 
 def createArgParser() -> argparse.ArgumentParser | None:
@@ -58,7 +55,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
     mainParser.set_defaults(config=Config())
 
     commonOptions = argparse.ArgumentParser("General options", description="Options, that are for setting the general behaviour of the program")
-    # generalOptions = mainParser.add_argument_group("General options", description="Options, that are for setting the general behaviour of the program")
     generalOptions = commonOptions.add_argument_group("General options", description="Options, that are for setting the general behaviour of the program")
     #TODO: only add -s to GUI mode
     generalOptions.add_argument(
@@ -74,7 +70,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             help="Launch the program as a GUI if needed modules are found and parse the rest of the arguments"
                             )
     
-    # sharedListOptions = mainParser.add_argument_group("Shared list options", description="Options, that are both used for Compiling and for Merging")
     sharedListOptions = commonOptions.add_argument_group("Shared list options", description="Options, that are both used for Compiling and for Merging")
     sharedListOptions.add_argument(
                         "-w", "--WantedOs",
@@ -112,7 +107,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             "Compile",
                             description="A list of all available options for Compiling",
                             help="Try to run a Compile with the rest of the given arguments",
-                            #TODO: add the shared options as well
                             add_help=False,
                             parents=[commonOptions]
                             )
@@ -123,7 +117,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             "Merge",
                             description="A list of all available options for Merging",
                             help="Try to run a Merge with the rest of the given arguments",
-                            #TODO: add the shared options as well
                             add_help=False,
                             parents=[commonOptions]
                             )
@@ -147,7 +140,6 @@ def createArgParser() -> argparse.ArgumentParser | None:
     createGuiParser(parser=guiParser)
     guiParser.set_defaults(func=emptyFunc)
 
-    # parserList = [mainParser, commonOptions, compileParser, mergeParser, helpParser, guiParser]
     parserList = {"Tools": mainParser, "Compile": compileParser, "Merge": mergeParser, "Help": helpParser, "GUI": guiParser}
     # so that the help function can access the parsers
     helpParser.set_defaults(parserList=parserList)

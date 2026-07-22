@@ -4,10 +4,8 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.utils import get_column_letter
 from typing import List
 from .formatExcel import formatExcel # as fE
-from . import CompileComplianceList as ccl
 from . import utils
 import validators
-import getopt, sys
 import re
 
 # Merge a new Compliance List into an existing one, updating it

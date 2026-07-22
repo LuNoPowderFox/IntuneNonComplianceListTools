@@ -6,7 +6,6 @@ from typing import List
 from ..config import ConfigTypes
 from .CompileComplianceList import compileComplianceList
 
-#TODO: add more codes if needed
 class ReturnCodes(Enum):
     SUCCESS = 0
     PARTIAL_SUCCESS = -9
@@ -20,11 +19,8 @@ class ReturnCodes(Enum):
     MISSING_ARGS = -8
     COMPLIANCE_LIST_INVALID_OS = -20
 
-def createCompileParser(pParser: argparse.ArgumentParser | None = None, isStandalone: bool = False) -> argparse.ArgumentParser | None:
-    parser: argparse.ArgumentParser = pParser
-    if isStandalone or parser is None:
-        ...
-    compileGroup = parser.add_argument_group("Compile specific Commands", description="Options that are specific for compiling")
+def createCompileParser(pParser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser | None:
+    compileGroup = pParser.add_argument_group("Compile specific Commands", description="Options that are specific for compiling")
     compileGroup.add_argument(
                         "-i", "--InputFile",
                         dest="inputFile",
@@ -36,13 +32,9 @@ def createCompileParser(pParser: argparse.ArgumentParser | None = None, isStanda
                         dest="outputFile",
                         help="The path of the output file. If not set, the name of the input file will be used instead"
                         )
-    ...
 
-def createMergeParser(pParser: argparse.ArgumentParser | None = None, isStandalone: bool = False) -> argparse.ArgumentParser | None:
-    parser: argparse.ArgumentParser = pParser
-    if isStandalone or parser is None:
-        ...
-    mergeGroup = parser.add_argument_group("Merge specific Commands", description="Options that are specific for merging")
+def createMergeParser(pParser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser | None:
+    mergeGroup = pParser.add_argument_group("Merge specific Commands", description="Options that are specific for merging")
     mergeGroup.add_argument(
                         "-o", "--OldFile",
                         dest="oldFile",
@@ -67,15 +59,15 @@ def createMergeParser(pParser: argparse.ArgumentParser | None = None, isStandalo
                         action="store_true",
                         help="[Not yet implemented] Try to automatically compile .csv files if given as input"
                         )
-    ...
 
-def autocompileInput(file2Compile: str | List[str], pArgs: dict) -> dict | None:
+def autocompileInput(file2Compile: List[str], pArgs: dict) -> dict | None:
     """
-    :param file2Compile: The value key of the file within args
-    :type file2Compile: str | List[str]
+    Try to compile the input file for merging by setting the arguments here to be used for the compiling  
+
+    :param file2Compile: The value key of the file within args  
+    :type file2Compile: str | List[str]  
     :param dict pArgs: the arguments from which to set the arguments for the compile
     """
-    #try to compile the input file for merging by setting the arguments here to be used for the compiling (maybe put them into a Namespace class?)
     result: dict = {
         "ReturnCode": ReturnCodes.SUCCESS,
         "returnValues": {},
@@ -83,9 +75,6 @@ def autocompileInput(file2Compile: str | List[str], pArgs: dict) -> dict | None:
         "errorMessages": {}
     }
 
-    # if not type(file2Compile) == List:
-    #     fileList = [file2Compile]
-    # else:
     fileList = file2Compile
 
     args: dict = {
@@ -131,12 +120,6 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
     """
     #TODO: maybe move this somewhere better
     pArgs.config.loadConfig(pArgs)
-
-    # print(f"All: {pArgs.config.getConfig(ConfigTypes.All)}")
-    # print(f"Formating: {pArgs.config.getConfig(ConfigTypes.Formating)}")
-    # print(f"Formating colors/*: {pArgs.config.getConfig(ConfigTypes.Formating, "colors/*")}")
-    # print(f"Formating colors/*/headerBackgroundColor: {pArgs.config.getConfig(ConfigTypes.Formating, "colors/*/headerBackgroundColor")}")
-    # print(f"Formating colors/*/headerBackgroundColor/bliblablub: {pArgs.config.getConfig(ConfigTypes.Formating, "colors/*/headerBackgroundColor/bliblablub")}")
     
     args = vars(pArgs)
     result: dict = {
@@ -151,9 +134,8 @@ def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | 
     }
 
     if args["wantedOS"] is None:
-        # result["args"]["wantedOS"] = "Windows"
         tmp = pArgs.config.getConfig(ConfigTypes.StandartVals, "wantedOS")
-        result["args"]["wantedOS"] = tmp["wantedOS"] if tmp is not None else None
+        result["args"]["wantedOS"] = tmp["wantedOS"] #if tmp is not None else None
     else:
         result["args"]["wantedOS"] = args["wantedOS"]
     #TODO: maybe get the standart vals from the config here as well (not sure how yet)
@@ -230,10 +212,7 @@ def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         return result
     result = extractCommonArgs(pArgs)
     result["Mode"] = "Merge"
-
-    #TODO: add autocompile support but first check, if both input files are valid before trying to autocompile
     result["args"]["compileCSV"] = args["compileCSV"]
-    # result["args"]["compileCSV"] = False
 
     if not os.path.exists(args["oldFile"]):
         result["ReturnCode"] = ReturnCodes.ERROR
@@ -241,11 +220,8 @@ def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         result["errorMessages"]["oldFile"] = "Given input file for old data does not exist!"
         isCompilePossible = False
     elif not str(args["oldFile"]).endswith(".xlsx") and result["args"]["compileCSV"]:
-        #TODO: add autocompile support
-        # result["args"]["oldFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
         result["args"]["oldFile"] = args["oldFile"]
         compileFiles.append("oldFile")
-        ...
     elif not str(args["oldFile"]).endswith(".xlsx") and not result["args"]["compileCSV"]:
         result["ReturnCode"] = ReturnCodes.ERROR
         result["args"]["oldFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
@@ -259,11 +235,8 @@ def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         result["errorMessages"]["newFile"] = "Given input file for new data does not exist!"
         isCompilePossible = False
     elif not str(args["newFile"]).endswith(".xlsx") and result["args"]["compileCSV"]:
-        #TODO: add autocompile support
-        # result["args"]["newFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
         result["args"]["newFile"] = args["newFile"]
         compileFiles.append("newFile")
-        ...
     elif not str(args["newFile"]).endswith(".xlsx") and not result["args"]["compileCSV"]:
         result["ReturnCode"] = ReturnCodes.ERROR
         result["args"]["newFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
@@ -291,30 +264,3 @@ def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | None:
         result["args"]["mergedFile"] = args["mergedFile"]
 
     return result
-
-# Will later be replaced or changed
-def showCompileHelp() -> None:
-    #TODO: add option for enabling/disabling converting device overview links and user email links
-    print("CompileComplianceList.py\n\n" +
-          "Arguments:\n"+
-          "'-i'/'--InputFile' \t\t- The path of the input file to process. Must be a .csv file (Mandatory)\n" +
-          "'-o'/'--OutputFile' \t\t- The path of the output file. If not set, the name of the input file will be used instead\n" +
-          "'-w'/'--WantedOS' \t\t- The OS you want to compile the data for. Default is 'Windows'\n" +
-          "'-d'/'--DeviceLinkSkip' \t- Skip the creation of the device overview links\n" +
-          "'-e'/'--EmailLinks' \t\t- Convert Emails into teams chat links\n" +
-          "'-k'/'--KeepDeviceIds' \t\t- Keep the Device Id column\n" +
-          "'-h'/'--Help' \t\t\t- Show this help and exit the program\n")
-
-def showMergeHelp() -> None:
-    print("CompileComplianceList.py\n\n" +
-          "Arguments:\n"+
-          "'-o'/'--OldFile' \t\t- The path of the input file of the old data to merge. Must be a .xlsx file (Mandatory)\n" +
-          "'-n'/'--NewFile' \t\t- The path of the input file of the new data to merge. Must be a .xlsx file (Mandatory)\n" +
-          "'-m'/'--MergedFile' \t\t- The path of the output file. If not set, the name will be generated by this pattern: \n" +
-          "\t\t\t\t  '[old file name (with path)]-[new file name (without path)]_merged.xlsx'\n" +
-          "'-w'/'--WantedOS' \t\t- [Not yet implemented] The OS you want to merge the data for. Default is 'Windows'\n" +
-          "'-c'/'--CompileCSV' \t- [Not yet implemented] Try to automatically compile .csv files if given as input\n" +
-          "'-d'/'--DeviceLinkSkip' \t- Skip the creation of the device overview links\n" +
-          "'-e'/'--EmailLinks' \t\t- Convert Email into teams chat links\n" +
-          "'-k'/'--keepDeviceIds' \t\t- Keep the Device Id column\n" +
-          "'-h'/'--Help' \t\t\t- Show this help and exit the program\n")

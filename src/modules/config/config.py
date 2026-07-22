@@ -121,7 +121,6 @@ class Config:
         self._mergeBehaviour = self._conf["mergeBehaviour"]
         self._valueGen = self._conf["valueGen"]
         self._standartgVals = self._conf["standartVals"]
-        ...
     
     def _loadConfigFromFile(self, pConfigFile: str | None = None) -> None:
         configFile = self._configPath

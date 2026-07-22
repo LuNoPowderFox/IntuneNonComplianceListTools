@@ -1,10 +1,10 @@
 import argparse
 import pandas as pd
-from .formatExcel import formatExcel #as fE
+from .formatExcel import formatExcel
 from . import utils
 from typing import List
-import getopt, sys
-import re, copy
+import sys
+import copy
 
 def addToColumnOder(columnOrder, problemList, problem):
     if problem in problemList and problem not in columnOrder:

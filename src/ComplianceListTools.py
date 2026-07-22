@@ -1,5 +1,4 @@
 from modules import config, CompileComplianceList, MergeComplianceLists, clUtils, utils
-import argparse
 
 if __name__ == "__main__":
     #TODO: make the output cleaner, displaying proper status messages
@@ -7,8 +6,6 @@ if __name__ == "__main__":
 
     argsP = mainParser.parse_args()
     result = argsP.func(argsP)
-    # print(result)
-    # print(argsP)
 
     if result["ReturnCode"] == clUtils.ReturnCodes.SUCCESS:
         print(f"Operation '{result["Mode"]}' was successful\n")
@@ -55,6 +52,5 @@ if __name__ == "__main__":
                 continue
             print(f"For argument '{arg}':")
             print(f"{result["errorMessages"][arg]}\n")
-            ...
 
         exit(1)
