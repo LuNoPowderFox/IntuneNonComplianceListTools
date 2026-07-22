@@ -3,6 +3,7 @@ from enum import Enum
 class ConfigMagicValues(Enum):
     USE_CELL_VALUE = 9999
     GENERATE_VALUE = 9998
+    HARDCODED_VALUE = 9997
 
 _standartConf: dir = {
     "configProfileName": "DefaultNonCompliance",
@@ -119,13 +120,21 @@ _standartConf: dir = {
         "links": {
             "Device Overview": {
                 "link": "https://intune.microsoft.com/#view/Microsoft_Intune_Devices/DeviceSettingsMenuBlade/~/properties/mdmDeviceId/{value}",
-                "fillValuePattern": ConfigMagicValues.USE_CELL_VALUE.value, #TODO: maybe add an encoder for json for this https://stackoverflow.com/questions/24481852/serialising-an-enum-member-to-json/24482806#24482806
+                "valueSource": {
+                    "sourceType": ConfigMagicValues.USE_CELL_VALUE.value, #TODO: maybe add an encoder for json for this https://stackoverflow.com/questions/24481852/serialising-an-enum-member-to-json/24482806#24482806
+                    "value": "GeräteId",
+                    "keepSourceColumn": False
+                },
                 "applyTo": ["Gerätename"],
                 "exclude": []
             },
             "Email Shortcut": {
                 "link": "https://teams.microsoft.com/l/chat/0/0?users={value}",
-                "fillValuePattern": ConfigMagicValues.USE_CELL_VALUE.value,
+                "valueSource": {
+                    "sourceType": ConfigMagicValues.USE_CELL_VALUE.value, #TODO: maybe add an encoder for json for this https://stackoverflow.com/questions/24481852/serialising-an-enum-member-to-json/24482806#24482806
+                    "value": "Benutzer-E-Mail",
+                    "keepSourceColumn": True
+                },
                 "applyTo": ["Benutzer-E-Mail"],
                 "exclude": []
             }

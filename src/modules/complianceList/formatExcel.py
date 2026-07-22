@@ -151,7 +151,6 @@ def convertToTable(sheet, sheetName: str) -> None:
 
 def formatExcel(filePath: str, sheetName: str = "Windows", keepDeviceIdColumn: bool = True, createDeviceLinks: bool = True, createEmailLinks: bool = False) -> None:
     wb = load_workbook(filePath)
-    # sheet = wb.active
     sheet = wb[sheetName] if sheetName in wb else None
 
     if not sheet:

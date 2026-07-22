@@ -52,7 +52,11 @@ class Config:
         "links": {
         (linkName): {
             "link": (hyperlink with placeholder if needed),
-            "fillValuePattern": (pattern for value to replace the placeholder or magic Value, indicating the cell value to be used),
+            "valueSource": {
+                    "sourceType": (Indicate, whether 'value' is a hardcoded value or for example a column name),
+                    "value": (hardcoded value or column name),
+                    "keepSourceColumn": (indicate whether the source column should be removed or not)
+            },
             "applyTo": (columnName/maybe pattern for specific cells (later); can be a list),
             "exclude": (columName/maybe pattern for specific cells(later); can be a list; Used if "applyTo" is left empty)
         }
@@ -104,7 +108,6 @@ class Config:
         self._valueGen: dir = {}
         self._standartgVals: dir = {}
 
-
     def _loadConfig(self, pConf: dir | None = None) -> None:
         if pConf is None:
             self._conf = utils._standartConf
@@ -149,7 +152,6 @@ class Config:
         else:
             self._configPath = args.settingsFile
 
-        # print(self._configPath)
         self._loadConfigFromFile()
 
     def __getConfigValue(self, configDir: dir, configName: str) -> dict | None:
@@ -164,7 +166,7 @@ class Config:
                 break
                 
         if tmp is not None and type(tmp) != dict:
-                    returnDir = {valuePath[-1]: tmp}
+            returnDir = {valuePath[-1]: tmp}
         else:
             returnDir = tmp
         return returnDir

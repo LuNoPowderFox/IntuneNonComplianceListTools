@@ -31,7 +31,6 @@ Main script
 
 #### Help
 
-- `'All'`: Show help for everything (not in use)
 - `'Tools'`: Show main help for the main script
 - `'Help'/[Nothing]`: Show available help options (This help)
 - `'Compile'`: Show help for [compiling](#usagecompiling)
@@ -80,6 +79,7 @@ Main script
 - [ ] Check .csv for validity
 - [ ] Automatically retrieve new data from Intune
 - [ ] Automatically retrieve old list
+- [ ] Create a class for the return/parameter dictionaries
 
 ### Clean up
 
