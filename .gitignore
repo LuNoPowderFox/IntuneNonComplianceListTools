@@ -1,5 +1,6 @@
 testExcel.py
 testPandas.py
+Testattribute.py
 .vscode/
 .config/
 __pycache__/

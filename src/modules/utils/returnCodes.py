@@ -1,0 +1,14 @@
+from enum import Enum
+
+class ReturnCodes(Enum):
+    SUCCESS = 0
+    PARTIAL_SUCCESS = -9
+    ERROR = -1
+    NO_ARGS_GIVEN = -2
+    INVALID_ARGS = -3
+    INVALID_INPUT_FILE = -4
+    INVALID_INPUT_FILE_FORMAT = -5
+    MISSING_INPUT_FILE = -6
+    INVALID_INPUT_FILE_PATH = -7
+    MISSING_ARGS = -8
+    COMPLIANCE_LIST_INVALID_OS = -20
