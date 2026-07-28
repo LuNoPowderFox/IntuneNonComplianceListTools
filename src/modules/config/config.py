@@ -145,15 +145,21 @@ class Config:
         
         self._loadConfig(pConf=conf)
 
-    def loadConfig(self, args: argparse.Namespace) -> None:
-        if args is None or args.settingsFile is None:
-            self._configPath = _standartConfigPath
-        else:
-            self._configPath = args.settingsFile
-
+    def loadConfig(self, settingFile: argparse.Namespace | str) -> None:
+        #TODO: change this to not need Namespace
+        if type(settingFile) == argparse.Namespace:
+            if settingFile is None or settingFile.settingsFile is None: #temp, to prevent stuff breaking during testing
+                self._configPath = _standartConfigPath
+            else:
+                self._configPath = settingFile.settingsFile
+        elif type(settingFile) == str:
+            if settingFile is None:
+                self._configPath = _standartConfigPath
+            else:
+                self._configPath = settingFile
         self._loadConfigFromFile()
 
-    def __getConfigValue(self, configDir: dir, configName: str) -> dict | None:
+    def __getConfigValue(self, configDir: dir, configName: str, checkExists: bool = False) -> dict | bool | None:
         valuePath = configName.split("/")
         returnDir = configDir
         tmp = returnDir
@@ -161,24 +167,31 @@ class Config:
             if type(tmp) == dict and value in tmp.keys():
                 tmp = tmp[value]
             else:
+                #WARNING: with the way this is handled, the actual config dir is not allowed to have any None values
                 tmp = None
                 break
-                
+
+        if checkExists and tmp is not None:
+            return True
+        elif checkExists and tmp is None:
+            return False
         if tmp is not None and type(tmp) != dict:
             returnDir = {valuePath[-1]: tmp}
         else:
             returnDir = tmp
         return returnDir
 
-    def getConfig(self, configName: ConfigTypes, configValue: str | None = None) -> dict | None:
+    def getConfig(self, configName: ConfigTypes, configValue: str | None = None, checkExists: bool = False) -> dict | bool | None:
         """
         Get values from the config
 
         :param ConfigTypes configName: The part of the config to retrieve
         :param configValue: the name/path of the config to get, separated by '/' (for example in Formating: "colors/*/headerBackgroundColor" for just the value 'headerBackgroundColor' or "colors/*" for all values of that config) [Optional]
         :type configValue: str | None
-        :return: The wanted config or None if not found
-        :rtype: dict | None
+        :param checkExists: Tells the function to only check if the config exists. Should only be set by internal functions
+        :type checkExists: bool
+        :return: The wanted config, bool if checkExists is set or None if not found
+        :rtype: dict | bool | None
         """
         returnDir = None
         match configName:
@@ -195,5 +208,11 @@ class Config:
             case ConfigTypes.StandartVals:
                 returnDir = self._standartgVals
         if returnDir is not None and configValue is not None:
-            returnDir = self.__getConfigValue(returnDir, configValue)
+            returnDir = self.__getConfigValue(returnDir, configValue, checkExists=checkExists)
         return returnDir
+    
+    def isInConfig(self, configName: ConfigTypes, configValue: str | None = None) -> bool:
+        """
+        Checks whether the wanted config is set or not
+        """
+        return self.getConfig(configName=configName, configValue=configValue)

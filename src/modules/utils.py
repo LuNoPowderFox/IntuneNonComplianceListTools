@@ -101,6 +101,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             title="Modes",
                             description="The available modes, the program can run in",
                             help="Mode help",
+                            dest="subCommand" #To be able to see, which subcommand was invoked
                             )
     
     compileParser = subParsers.add_parser(
