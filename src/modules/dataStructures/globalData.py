@@ -1,3 +1,6 @@
+import sys
+
+# if 'launchData' in sys.modules:
 from .launchData import LaunchData
 from .utils import ProgramModes
 from ..config import Config
@@ -18,6 +21,7 @@ class GlobalData():
         if not launchData is None:
             self._setLaunchData(launchData)
         self._loadConfig()
+        self._setMode(self._launchData.getMainMode())
 
     @property
     def launchData(self) -> LaunchData | None:

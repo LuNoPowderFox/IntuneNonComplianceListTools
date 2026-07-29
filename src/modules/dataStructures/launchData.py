@@ -1,7 +1,13 @@
 import argparse
+import sys
 
 from .utils import ProgramModes
+from .returnCodes import ReturnCodes
 from ..config import Config
+# if 'returnData' in sys.modules:
+from .returnData import ReturnData
+if 'argumentData' in sys.modules:
+    from .argumentData import ArgumentData
 
 class LaunchData():
     _launchArgsRaw: argparse.Namespace = None
@@ -19,11 +25,36 @@ class LaunchData():
         #TODO: maybe move the extraction somewhere here and then just check them where they are currently getting extracted
         ...
 
-    def checkArgs(self, mode: ProgramModes) -> None:
+    def runExtractFunc(self) -> ReturnData:
         """
-        Tries to run the function specified for the submodule, giving the launch args to it and receiving a fixed set of arguments
+        Tries to run the extraction function from the arguments
+        
+        :return: The result of the extract function for that module
+        :rtype: ReturnData
         """
-        ...
+        rData = ReturnData()
+        if not self.isInLaunchArgs("extractFunc"):
+            rData.setReturnCode(ReturnCodes.ERROR)
+            rData.setArgCode("extractFunc", ReturnCodes.MISSING_ARGS)
+            rData.setErrorMessage("extractFunc", "No launch argument extraction function to run with launch args was set!")
+            return rData
+        return self.getLaunchArg("extractFunc")()
+
+    def runModeFunc(self, args: ArgumentData) -> ReturnData:
+        """
+        Tries to run the method specified in the launch args for the specified module
+
+        :return: The result of the run method for that module
+        :rtype: ReturnData
+        """
+        rData = ReturnData()
+        if not self.isInLaunchArgs("func"):
+            rData.setReturnCode(ReturnCodes.ERROR)
+            rData.setArgCode("func", ReturnCodes.MISSING_ARGS)
+            rData.setErrorMessage("func", "No function to run with launch args was set!")
+            return rData
+        
+        return self.getLaunchArg("func")(args)
 
     def isInLaunchArgs(self, argument: str) -> bool:
         if argument in self._launchArgs.keys():

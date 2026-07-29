@@ -6,16 +6,19 @@ from typing import List
 import sys
 import copy
 
+from ..dataStructures import gData, ArgumentData, ReturnData, ReturnCodes
+
 def addToColumnOder(columnOrder, problemList, problem):
     if problem in problemList and problem not in columnOrder:
         columnOrder.append(problem)
 
-def processInput(pDF: pd.DataFrame, wantedOS: str) -> dict | pd.DataFrame:
+def processInput(pDF: pd.DataFrame, wantedOS: str) -> dict | ReturnData | pd.DataFrame:
     # to not remove stuff from the original df
     df = copy.deepcopy(pDF)
     processedList: List = []
     processedData: pd.DataFrame
     hasDeviceID: bool = False
+    rData = ReturnData()
     result = {
         "ReturnCode": utils.ReturnCodes.SUCCESS,
         "returnValues": {
@@ -31,6 +34,8 @@ def processInput(pDF: pd.DataFrame, wantedOS: str) -> dict | pd.DataFrame:
 
     if wantedOS not in pDF['OS'].values:
         result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+        rData.setReturnCode(ReturnCodes.COMPLIANCE_LIST_INVALID_OS)
+        return rData
         return result
 
     for x in df.index:
@@ -103,11 +108,14 @@ def processInput(pDF: pd.DataFrame, wantedOS: str) -> dict | pd.DataFrame:
     processedData = pd.DataFrame(processedList)
     processedData = processedData[columnOrder]
     result["returnValues"]["processedData"] = processedData
+    rData.setReturnValue(name="processedData", value=processedData)
+    return rData
     return result
 
 def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: List, makeDeviceLinks: bool = True, 
-                       makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> dict | None:
+                       makeEmailLinks: bool = False, keepDeviceIdColumn: bool = False) -> dict | ReturnData | None:
     df = pd.read_csv(inputFile)
+    rData = ReturnData()
     result = {
         "ReturnCode": utils.ReturnCodes.SUCCESS,
         "args": {
@@ -122,18 +130,25 @@ def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: List, makeDevi
     for os in wantedOS:
         tmpResult = processInput(df, os)
 
-        if tmpResult["ReturnCode"] == utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
+        if tmpResult.returnCode == ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
             result["ReturnCode"] = utils.ReturnCodes.PARTIAL_SUCCESS
+            rData.setReturnCode(ReturnCodes.PARTIAL_SUCCESS)
             result["args"]["wantedOS"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
-            if "wantedOS" not in result["errorMessages"].keys():
+            rData.setArgCode("wantedOS", ReturnCodes.COMPLIANCE_LIST_INVALID_OS)
+            if not rData.isInErrorMessages("wantedOS"):
+                rData.setErrorMessage("wantedOS", f"The following OS's are not valid: {os}")
                 result["errorMessages"]["wantedOS"] = f"The following OS's are not valid: {os}"
             else:
+                rData.setErrorMessage("wantedOS", f", {os}")
                 result["errorMessages"]["wantedOS"] += f", {os}"
         else:
-            tmp[os] = tmpResult["returnValues"]["processedData"]
+            tmp[os] = tmpResult.getReturnValue("processedData")
+            # tmp[os] = tmpResult["returnValues"]["processedData"]
 
     if len(tmp.keys()) == 0:
         result["ReturnCode"] = utils.ReturnCodes.ERROR
+        rData.setReturnCode(ReturnCodes.ERROR)
+        return rData
         return result
 
     with pd.ExcelWriter(outputFile) as oFile:
@@ -142,9 +157,36 @@ def convertDataToExcel(inputFile: str, outputFile: str, wantedOS: List, makeDevi
     for os in tmp.keys():
         formatExcel(outputFile, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn, sheetName=os)
 
+    return rData
     return result
 
-def compileComplianceList(pArgs: argparse.Namespace | dict) -> dict | None:
+def compileComplianceList(args: ArgumentData) -> ReturnData:
+    rData = ReturnData(funcArgs=args, mode=args.getMode())
+    neededArgs: set = {"inputFile", "outputFile", "wantedOS", "deviceLinkSkip", "emailLinks", "keepDeviceIds"}
+
+    # if not any(args.isInArgs(arg) for arg in args.getArgsList()):
+    if not any(args.isInArgs(arg) for arg in neededArgs):
+        rData.setReturnCode = ReturnCodes.MISSING_ARGS
+        return rData
+
+    inputFile: str = args.getArg("inputFile")
+    outputFile: str = args.getArg("outputFile")
+    wantedOS: List[str] = args.getArg("wantedOS")
+    makeDeviceLinks: bool = not args.getArg("deviceLinkSkip")
+    makeEmailLinks: bool = args.getArg("emailLinks")
+    keepDeviceIdColumn: bool = args.getArg("keepDeviceIds")
+
+    tmp = convertDataToExcel(inputFile=inputFile, outputFile=outputFile, wantedOS=wantedOS, makeDeviceLinks=makeDeviceLinks, makeEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn)
+    rData.extractFromOther(tmp)
+    print(tmp)
+    
+    #TODO: add more error handling during the compile
+    if rData.returnCode == ReturnCodes.SUCCESS:
+        rData.setReturnValue(name="outputFile", value=outputFile)
+
+    return rData
+
+def compileComplianceListOld(pArgs: argparse.Namespace | dict | ArgumentData | None) -> dict | ReturnData | None:
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),

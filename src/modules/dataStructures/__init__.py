@@ -1,13 +1,12 @@
 from .returnCodes import ReturnCodes as ReturnCodes
 from .utils import ProgramModes as ProgramModes
 from .utils import AttributeLocation as AttributeLocation
-from .argumentData import ArgumentData as ArgumentData
-from .launchData import LaunchData as LaunchData
-from .globalData import GlobalData as GlobalData
 from .returnData import ReturnData as ReturnData
-
-# The shared instance of GlobalData, needs to be set at the beginning of the program with the launch args
-globData: GlobalData = None
+from .globalData import GlobalData as GlobalData
+from .launchData import LaunchData as LaunchData
+from .argumentData import ArgumentData as ArgumentData
+# from .globData import globData as globData
+from . import gData as gData
 
 # This is probably very stupid but I don't care
 # it should just like make handling arguments, returndata, launchargs and config earsier. also for easily implementing different front ends

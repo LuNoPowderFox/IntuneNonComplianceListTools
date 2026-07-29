@@ -1,1 +1,3 @@
-from .utils import ReturnCodes, extractCompileArgs, extractMergeArgs
+from .utils import extractCompileArgs, extractMergeArgs
+from .CompileComplianceList import compileComplianceList as compileComplianceList
+from .MergeComplianceLists import mergeCompileList as mergeCompileList

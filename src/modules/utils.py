@@ -1,6 +1,7 @@
 from typing import List
 
 from modules import clUtils, MergeComplianceLists, CompileComplianceList
+from modules.complianceList import compileComplianceList, mergeCompileList
 from modules.config import Config
 import argparse
 
@@ -42,7 +43,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
     mainParser = argparse.ArgumentParser(
                             prog="ComplianceListTools", 
                             description="A set of tools to process exported .csv lists of Intune's noncompliant devices report into a more usable format and be able to merge lists together.",
-                            epilog="Created by LuNoPowderFox https://github.com/LuNoPowderFox/IntuneCompileNonComplianceList (still a private repo)",
+                            epilog="Created by LuNoPowderFox https://github.com/LuNoPowderFox/IntuneNonComplianceListTools",
                             allow_abbrev=False,
                             add_help=False
                             )
@@ -113,6 +114,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             )
     clUtils.createCompileParser(pParser=compileParser)
     compileParser.set_defaults(func=CompileComplianceList.compileComplianceList)
+    compileParser.set_defaults(extractFunc=clUtils.extractCompileArgs)
 
     mergeParser = subParsers.add_parser(
                             "Merge",
@@ -122,7 +124,8 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             parents=[commonOptions]
                             )
     clUtils.createMergeParser(pParser=mergeParser)
-    mergeParser.set_defaults(func=MergeComplianceLists.mergeComplianceLists)
+    mergeParser.set_defaults(func=MergeComplianceLists.mergeCompileList)
+    mergeParser.set_defaults(extractFunc=clUtils._extractMergeArgs)
 
     helpParser = subParsers.add_parser(
                             "Help", 
@@ -131,6 +134,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             )
     createHelpParser(parser=helpParser)
     helpParser.set_defaults(func=handleHelp)
+    helpParser.set_defaults(extractFunc=emptyFunc)
 
     guiParser = subParsers.add_parser(
                             "GUI",
@@ -140,6 +144,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             )
     createGuiParser(parser=guiParser)
     guiParser.set_defaults(func=emptyFunc)
+    guiParser.set_defaults(extractFunc=emptyFunc)
 
     parserList = {"Tools": mainParser, "Compile": compileParser, "Merge": mergeParser, "Help": helpParser, "GUI": guiParser}
     # so that the help function can access the parsers

@@ -9,10 +9,10 @@ from .launchData import LaunchData
 from .globalData import GlobalData
 
 # Nice point to rediscover that cirular imports are a thing...
-if "returnData" in sys.modules:
-    from .returnData import ReturnData
-if 'globData' in sys.modules:
-    from . import globData
+# if "returnData" in sys.modules:
+from .returnData import ReturnData
+# if 'gData' in sys.modules:
+from . import gData
 
 # I'm shitty at naming stuff...
 class ArgumentData():
@@ -32,7 +32,7 @@ class ArgumentData():
         self._args: dict = {}
         self._mode: ProgramModes = mode
 
-    @classmethod
+    # @classmethod
     def createFromExisting(cls, newArgs: dict | ReturnData | None = None, newMode: ProgramModes | None = None, keepUnchangedArgs: bool = False) -> ArgumentData:
         """
         Creates and returns a new ArgumentData intance that is initially a copy of the intance this was invoked on
@@ -45,11 +45,17 @@ class ArgumentData():
         :return: The new ArgumentData instance
         :rtype: ArgumentData
         """
+        #TODO: add better functionality for setting new args
         newData = copy.copy(cls)
+        # newData = ArgumentData()
+        # newData._setArgs(cls.args)
+        # newData._setMode(cls.getMode())
+        print(newData)
         if newArgs is not None:
             if type(newArgs) == ReturnData:
-                newData.extractFromReturnData(newArgs)
+                newData.extractFromReturnData(rData=newArgs, replaceExisting=True)
             else:
+                #ERROR: this breaks stuff
                 newData._setArgs(newArgs=newArgs)
         if newMode is not None:
             newData._setMode(newMode)
@@ -88,17 +94,18 @@ class ArgumentData():
             case AttributeLocation.FUNC_ARGS:
                 return self._args[name]["value"]
             case AttributeLocation.LAUNCH_ARGS:
-                return globData.launchData.getLaunchArg(name)
+                return gData.globData.launchData.getLaunchArg(self._args[name]["value"])
             case AttributeLocation.CONFIG:
-                return globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"])
+                print(gData.globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"])[name])
+                return gData.globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"])[name] # With this we just need to make sure that the config name is the same as [name] here
 
-    def setArg(self, name: str, value, configPath: str = "", location: AttributeLocation = AttributeLocation.LAUNCH_ARGS) -> None:
+    def setArg(self, name: str, value, configPath: str = "", location: AttributeLocation = AttributeLocation.FUNC_ARGS) -> None:
         """
         Set an the argument [name] to the wanted value
 
         :param name: The name of the argument
         :type name: str
-        :param value: either the value if location is FUNC_ARG or of ConfigTypes if location is CONFIG
+        :param value: either the value if location is FUNC_ARG or of ConfigTypes if location is CONFIG or the launch arg if location is LAUNCH_ARG
         :type value: Any | ConfigTypes
         :param configPath: In case location is set to CONFIG, store this alongside the ConfigTypes
         :type configPath: str
@@ -108,11 +115,10 @@ class ArgumentData():
         newValue = value
         match location:
             case AttributeLocation.LAUNCH_ARGS:
-                if not globData.launchData.isInLaunchArgs(name):
+                if not gData.globData.launchData.isInLaunchArgs(value):
                     raise AttributeError()
             case AttributeLocation.CONFIG:
-                #TODO: Config needs a isInConfig() function
-                if not globData.config.isInConfig(value, configPath):
+                if not gData.globData.config.isInConfig(value, configPath):
                     raise AttributeError()
                 newValue = { "type": value, "path": configPath }
             # case AttributeLocation.FUNC_ARGS:
@@ -122,6 +128,7 @@ class ArgumentData():
                 #     raise AttributeError()
                 pass
         self._args[name] = {"location": location, "value": newValue}
+        del newValue
 
     def _setArgs(self, newArgs: dict) -> None:
         """
@@ -129,16 +136,22 @@ class ArgumentData():
         """
         self._args = newArgs
 
-    def extractFromReturnData(self, rData: ReturnData, valueList: List | None = None, replaceExisting: bool = False) -> None:
+    def extractFromReturnData(self, rData: ReturnData, valueList: List | None = None, extractMode: bool = False, replaceExisting: bool = False) -> None:
         """
         Extract the return values and save them as arguments. Extracts all values, unless valueList is set
         """
-        for value in rData.getReturnValueList():
-            if not valueList is None and value not in valueList:
+        for arg in rData.getReturnValueList():
+            if not valueList is None and arg not in valueList:
                 continue
-            if value in self.getArgsList() and not replaceExisting:
+            if arg in self.getArgsList() and not replaceExisting:
                 continue
-            self._args[value] = {"location": AttributeLocation.FUNC_ARGS, "value": rData.returnValues[value]}
+            if rData.returnValues[arg]["location"] == AttributeLocation.RETURN_VAL:
+                self._args[arg] = {"location": AttributeLocation.FUNC_ARGS, "value": rData.getReturnValue(arg)}
+            else:
+                self._args[arg] = {"location": rData.returnValues[arg]["location"], "value": rData.returnValues[arg]["value"]}
+
+        if extractMode:
+            self._setMode(rData.mode)
 
     def getMode(self) -> ProgramModes:
         return self._mode

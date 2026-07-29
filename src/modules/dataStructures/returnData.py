@@ -3,11 +3,12 @@ import sys
 from typing import List, Any
 from .returnCodes import ReturnCodes
 from .utils import AttributeLocation, ProgramModes
-from .globalData import GlobalData
+if 'globalData' in sys.modules:
+    from .globalData import GlobalData
 if 'argumentData' in sys.modules:
     from .argumentData import ArgumentData
-if 'globData' in sys.modules:
-    from . import globData
+# if 'gData' in sys.modules: # Circular imports are confusing...
+from . import gData
 
 class ReturnData():
     """
@@ -24,6 +25,7 @@ class ReturnData():
         self._returnValues: dict = {}
         self._errorMessages: dict = {}
         self._funcArgs: ArgumentData = funcArgs
+        self._argCodes: dict = {}
         self._mode: ProgramModes = mode
 
     @property
@@ -37,7 +39,7 @@ class ReturnData():
     def mode(self) -> str:
         return self._mode
 
-    def setMode(self, mode: str) -> None:
+    def setMode(self, mode: ProgramModes) -> None:
         self._mode = mode
 
     @property
@@ -82,9 +84,9 @@ class ReturnData():
             case AttributeLocation.FUNC_ARGS:
                 return self.getFuncArg(name)
             case AttributeLocation.LAUNCH_ARGS:
-                return globData.launchData.getLaunchArg(name)
+                return gData.globData.launchData.getLaunchArg(self._returnValues[name]["value"])
             case AttributeLocation.CONFIG:
-                return globData.config.getConfig(self._returnValues[name]["value"]["type"], self._returnValues[name]["value"]["path"])
+                return gData.globData.config.getConfig(self._returnValues[name]["value"]["type"], self._returnValues[name]["value"]["path"])
 
     def setReturnValue(self, name: str, value, configPath: str = "", location: AttributeLocation = AttributeLocation.RETURN_VAL) -> None:
         """
@@ -92,7 +94,7 @@ class ReturnData():
         
         :param name: The name of the return value
         :type name: str
-        :param value: either the value if location is RETURN_VAL or of ConfigTypes if location is CONFIG
+        :param value: either the value if location is RETURN_VAL or of ConfigTypes if location is CONFIG or the launch arg if locations is LAUNCH_ARG
         :type value: Any | ConfigTypes
         :param configPath: In case location is set to CONFIG, store this alongside the ConfigTypes
         :type configPath: str
@@ -107,14 +109,64 @@ class ReturnData():
                         if not self.isInFuncArgs(name):
                             raise AttributeError()
                     case AttributeLocation.LAUNCH_ARGS:
-                        if not globData.launchData.isInLaunchArgs(name):
+                        if not gData.globData.launchData.isInLaunchArgs(value):
                             raise AttributeError()
                     case AttributeLocation.CONFIG:
-                        if not globData.config.isInConfig(value, configPath):
+                        if not gData.globData.config.isInConfig(value, configPath):
                             raise AttributeError()
                         newValue = { "type": value, "path": configPath }
 
         self._returnValues[name] = { "location": location, "value": newValue }
+
+    def extractFromOther(self, otherReturnData: ReturnData, inplace: bool = True) -> ReturnData | None:
+        """
+        Extract and merge the returnData attributes from otherReturnData to self  
+        If duplicates are found, use the attributes from otherReturnData
+
+        :param otherReturnData: the instance to extract the data from
+        :type otherReturnData: RetunData
+        :param inplace: merge the data into self if set. otherwise return new instance (NOT IMPLEMENTED YET)
+        :type inplace: bool
+        :return: Either a new instance of ReturnData with the merged attributes or None
+        :rtype: ReturnData | None
+        """
+        #TODO: make this actually work
+        if type(otherReturnData) == ReturnData:
+            self._returnCode = otherReturnData._returnCode
+            self._returnValues | otherReturnData._returnValues
+            self._argCodes | otherReturnData._argCodes
+            self._errorMessages | otherReturnData._errorMessages
+        elif type(otherReturnData) == dict: # Keep only until cleanup
+            self._returnCode = otherReturnData["ReturnCode"]
+            self._argCodes | otherReturnData["args"]
+            self._errorMessages | otherReturnData["errorMessages"]
+        ...
+
+    def getArgCodeList(self) -> List:
+        """
+        Returns a list of all available arg codes
+        """
+        return self._argCodes.keys()
+
+    def isInArgCodes(self, name: str) -> bool:
+        """
+        Checks whether the given argument is in the argcode list
+        """
+        return name in self.getArgCodeList()
+
+    def getArgCode(self, name) -> ReturnCodes | None:
+        """
+        Returns the wanted argcode or None if not existant
+        """
+        if not self.isInArgCodes(name):
+            return None
+        return self._argCodes[name]
+
+    def setArgCode(self, name: str, code: ReturnCodes) -> None:
+        """
+        Sets the return code for the specific argument
+        """
+        self._argCodes[name] = code
 
     @property
     def errorMessages(self):
@@ -131,7 +183,7 @@ class ReturnData():
             return self._errorMessages[name]
         return None
 
-    def setErrorMessage(self, name: str, value, appendIfExists: bool = True, appendSeperator: str = " ") -> None:
+    def setErrorMessage(self, name: str, value, appendIfExists: bool = True, appendSeperator: str = "") -> None:
         if self.isInErrorMessages(name) and appendIfExists:
             self._errorMessages[name] += appendSeperator + value
         else:

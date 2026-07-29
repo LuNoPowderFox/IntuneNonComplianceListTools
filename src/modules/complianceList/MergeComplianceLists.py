@@ -8,6 +8,8 @@ from . import utils
 import validators
 import re
 
+from ..dataStructures import gData, ArgumentData, ReturnData, ReturnCodes
+
 # Merge a new Compliance List into an existing one, updating it
 
 # just check if the data has the DeviceId column
@@ -259,7 +261,7 @@ def compareOldData(oldData: pd.DataFrame, newData: pd.DataFrame, columnList: Lis
 
     return resultData
 
-def _mergeComplianceLists(oldListPath: str, newListPath: str, wantedOS: str | List[str] = "Windows") -> dict | None:
+def _mergeComplianceLists(oldListPath: str, newListPath: str, wantedOS: str | List[str] = "Windows") -> dict | ReturnData | None:
     # 1. check which devices from oldData are also still in newData
     # 1.1 compare the problem columns, using newData as the newer state and update accordingly
     # 1.2 compare the notes from those devices and keep the new ones + maybe the old notes in brackets [] after that
@@ -270,6 +272,7 @@ def _mergeComplianceLists(oldListPath: str, newListPath: str, wantedOS: str | Li
     # 3.1 keep those devices as is from newData
     # 3.2 keep the notes from those devices from newData^
     # 4 create column showing if the data changed
+    rData = ReturnData()
     result = {
         "ReturnCode": utils.ReturnCodes.SUCCESS,
         "returnValues": {
@@ -295,14 +298,20 @@ def _mergeComplianceLists(oldListPath: str, newListPath: str, wantedOS: str | Li
     
     if wantedOS not in oldWb and wantedOS in newWb:
         print(f"OS '{wantedOS}' only found in new data...")
+        rData.setReturnValue(name="mergedData", value=newData)
         result["returnValues"]["mergedData"] = newData
+        return rData
         return result
     if wantedOS not in newWb and wantedOS in oldWb:
         print(f"OS '{wantedOS}' only found in old data...")
+        rData.setReturnValue(name="mergedData", value=oldData)
         result["returnValues"]["mergedData"] = oldData
+        return rData
         return result
     if wantedOS not in oldWb and wantedOS not in newWb:
+        rData.setReturnCode = ReturnCodes.COMPLIANCE_LIST_INVALID_OS
         result["ReturnCode"] = utils.ReturnCodes.COMPLIANCE_LIST_INVALID_OS
+        return rData
         return result
     
     oldSheet = oldWb[wantedOS]
@@ -331,10 +340,64 @@ def _mergeComplianceLists(oldListPath: str, newListPath: str, wantedOS: str | Li
     mergedData = compareOldData(oldData=oldData, newData=newData, columnList=columnList, hasDeviceIds=hasDeviceIds)
 
     result["returnValues"]["mergedData"] = mergedData
+    rData.setReturnValue(name="mergedData", value=mergedData)
 
+    return rData
     return result
 
-def mergeComplianceLists(pArgs: argparse.Namespace) -> dict | None:
+def mergeCompileList(args: ArgumentData) -> ReturnData:
+    rData = ReturnData(funcArgs=args, mode=args.getMode())
+    neededArgs: set = {"oldFile", "newFile", "mergedFile", "compileCSV", "wantedOS", "deviceLinkSkip", "emailLinks", "keepDeviceIds"}
+
+    # if not any(args.isInArgs(arg) for arg in args.getArgsList()):
+    if not any(args.isInArgs(arg) for arg in neededArgs):
+            rData.setReturnCode = ReturnCodes.MISSING_ARGS
+            return rData
+
+    oldListPath: str = args.getArg("oldFile")
+    newListPath: str = args.getArg("newFile")
+    outputPath: str = args.getArg("mergedFile")
+    wantedOS: List[str] = args.getArg("wantedOS")
+    makeDeviceLinks: bool = not args.getArg("deviceLinkSkip")
+    makeEmailLinks: bool = args.getArg("emailLinks")
+    keepDeviceIdColumn: bool = args.getArg("keepDeviceIds")
+
+    tmp = {}
+    
+    for os in wantedOS:
+        tmpResult = _mergeComplianceLists(oldListPath=oldListPath, newListPath=newListPath, wantedOS=os)
+        print("")
+
+        if tmpResult.returnCode == ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
+        # if tmpResult["ReturnCode"] == ReturnCodes.COMPLIANCE_LIST_INVALID_OS:
+            rData.returnCode = ReturnCodes.PARTIAL_SUCCESS
+            rData.setReturnCode("wantedOS", ReturnCodes.COMPLIANCE_LIST_INVALID_OS)
+            if rData.isInErrorMessages("wantedOS"):
+                rData.setErrorMessage("wantedOS", f"The following OS's are not valid: {os}")
+            else:
+                rData.setErrorMessage("wantedOS", f", {os}")
+        else:
+            tmp[os] = tmpResult.getReturnValue("mergedData")
+            # tmp[os] = tmpResult["returnValues"]["mergedData"]
+
+    if len(tmp.keys()) == 0:
+        rData.setReturnCode(ReturnCodes.ERROR)
+        return rData
+
+    with pd.ExcelWriter(outputPath) as oFile:
+        for os in tmp.keys():
+            tmp[os].to_excel(oFile, index=False, sheet_name=os)
+    for os in tmp.keys():
+        formatExcel(outputPath, createDeviceLinks=makeDeviceLinks, createEmailLinks=makeEmailLinks, keepDeviceIdColumn=keepDeviceIdColumn, sheetName=os)
+        print("")
+    
+    #TODO: add more error handling during the compile
+    rData.setReturnValue(name="mergedFile", value=outputPath)
+    
+    return rData
+
+
+def mergeComplianceListsOld(pArgs: argparse.Namespace) -> dict | None:
     """Return dictionary structure:
     {
         "ReturnCode": (ReturnCode),
