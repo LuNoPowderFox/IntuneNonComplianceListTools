@@ -1,5 +1,4 @@
 from typing import List
-import argparse
 import copy
 import sys
 
@@ -7,12 +6,11 @@ from ..config import Config, ConfigTypes
 from .utils import AttributeLocation, ProgramModes
 from .launchData import LaunchData
 from .globalData import GlobalData
+from . import gData
 
 # Nice point to rediscover that cirular imports are a thing...
 # if "returnData" in sys.modules:
 from .returnData import ReturnData
-# if 'gData' in sys.modules:
-from . import gData
 
 # I'm shitty at naming stuff...
 class ArgumentData():
@@ -32,7 +30,6 @@ class ArgumentData():
         self._args: dict = {}
         self._mode: ProgramModes = mode
 
-    # @classmethod
     def createFromExisting(cls, newArgs: dict | ReturnData | None = None, newMode: ProgramModes | None = None, keepUnchangedArgs: bool = False) -> ArgumentData:
         """
         Creates and returns a new ArgumentData intance that is initially a copy of the intance this was invoked on
@@ -54,9 +51,12 @@ class ArgumentData():
         if newArgs is not None:
             if type(newArgs) == ReturnData:
                 newData.extractFromReturnData(rData=newArgs, replaceExisting=True)
-            else:
-                #ERROR: this breaks stuff
-                newData._setArgs(newArgs=newArgs)
+            elif type(newArgs) == dict:
+                for name in newArgs.keys():
+                    if not "location" in newArgs[name] and not "value" in newArgs[name]:
+                        #TODO: choose better error handling
+                        raise AttributeError
+                    newData.setArg(name=name, value=newArgs[name]["value"], location=newArgs[name]["location"])
         if newMode is not None:
             newData._setMode(newMode)
         return newData
@@ -136,9 +136,17 @@ class ArgumentData():
         """
         self._args = newArgs
 
-    def extractFromReturnData(self, rData: ReturnData, valueList: List | None = None, extractMode: bool = False, replaceExisting: bool = False) -> None:
+    def extractFromReturnData(self, rData: ReturnData, valueList: List | None = None, newMode: ProgramModes | None = None, extractMode: bool = False, replaceExisting: bool = False) -> None:
         """
         Extract the return values and save them as arguments. Extracts all values, unless valueList is set
+
+        :param ReturnData rData: The ReturnData object to extract the values from
+        :param valueList: If this is set, only extract the values mentioned in here
+        :type valueList: List | None
+        :param newMode: Manually set the new mode
+        :type newMode: ProgramModes | None
+        :param bool extractMode: If this is set, also extract the mode set in rData. Only has an effect if newMode is not set
+        :param bool replaceExisting: If this is set, replace already existing values, if not, ignore that value
         """
         for arg in rData.getReturnValueList():
             if not valueList is None and arg not in valueList:
@@ -150,11 +158,24 @@ class ArgumentData():
             else:
                 self._args[arg] = {"location": rData.returnValues[arg]["location"], "value": rData.returnValues[arg]["value"]}
 
-        if extractMode:
+        if not newMode is None:
+            self._setMode(newMode)
+        if extractMode and newMode is None:
             self._setMode(rData.mode)
 
     def getMode(self) -> ProgramModes:
+        """
+        Returns the set mode
+
+        :return: The mode
+        :rtype: ProgramModes
+        """
         return self._mode
 
     def _setMode(self, mode: ProgramModes) -> None:
+        """
+        Sets the mode
+
+        :param ProgramModes mode: The mode to set
+        """
         self._mode = mode

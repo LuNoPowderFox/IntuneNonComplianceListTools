@@ -115,6 +115,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
     clUtils.createCompileParser(pParser=compileParser)
     compileParser.set_defaults(func=CompileComplianceList.compileComplianceList)
     compileParser.set_defaults(extractFunc=clUtils.extractCompileArgs)
+    compileParser.set_defaults(autoCompileFunc=emptyFunc)
 
     mergeParser = subParsers.add_parser(
                             "Merge",
@@ -125,7 +126,8 @@ def createArgParser() -> argparse.ArgumentParser | None:
                             )
     clUtils.createMergeParser(pParser=mergeParser)
     mergeParser.set_defaults(func=MergeComplianceLists.mergeCompileList)
-    mergeParser.set_defaults(extractFunc=clUtils._extractMergeArgs)
+    mergeParser.set_defaults(extractFunc=clUtils.extractMergeArgs)
+    mergeParser.set_defaults(autoCompileFunc=clUtils.autocompileInput)
 
     helpParser = subParsers.add_parser(
                             "Help", 
@@ -135,6 +137,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
     createHelpParser(parser=helpParser)
     helpParser.set_defaults(func=handleHelp)
     helpParser.set_defaults(extractFunc=emptyFunc)
+    helpParser.set_defaults(autoCompileFunc=emptyFunc)
 
     guiParser = subParsers.add_parser(
                             "GUI",
@@ -145,6 +148,7 @@ def createArgParser() -> argparse.ArgumentParser | None:
     createGuiParser(parser=guiParser)
     guiParser.set_defaults(func=emptyFunc)
     guiParser.set_defaults(extractFunc=emptyFunc)
+    guiParser.set_defaults(autoCompileFunc=emptyFunc)
 
     parserList = {"Tools": mainParser, "Compile": compileParser, "Merge": mergeParser, "Help": helpParser, "GUI": guiParser}
     # so that the help function can access the parsers

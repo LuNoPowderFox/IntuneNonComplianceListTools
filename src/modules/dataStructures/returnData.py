@@ -3,8 +3,6 @@ import sys
 from typing import List, Any
 from .returnCodes import ReturnCodes
 from .utils import AttributeLocation, ProgramModes
-if 'globalData' in sys.modules:
-    from .globalData import GlobalData
 if 'argumentData' in sys.modules:
     from .argumentData import ArgumentData
 # if 'gData' in sys.modules: # Circular imports are confusing...
@@ -33,6 +31,11 @@ class ReturnData():
         return self._returnCode
 
     def setReturnCode(self, code: ReturnCodes) -> None:
+        """
+        Sets the return code
+
+        :param ReturnCodes code: The code to set
+        """
         self._returnCode = code
 
     @property
@@ -40,6 +43,11 @@ class ReturnData():
         return self._mode
 
     def setMode(self, mode: ProgramModes) -> None:
+        """
+        Sets the mode
+
+        :param ProgramModes mode: The mode to set
+        """
         self._mode = mode
 
     @property
@@ -47,11 +55,25 @@ class ReturnData():
         return self._funcArgs
 
     def getFuncArg(self, name: str) -> Any | None:
+        """
+        Returns the given function argument
+
+        :param str name: the name of the argument
+        :return: Either the value of the argument or None if non-existant
+        :rtype: Any | None
+        """
         if self._funcArgs is None:
             return None
         return self._funcArgs.getArg(name)
 
     def isInFuncArgs(self, name) -> bool:
+        """
+        Check whether the given value is existant within the function arguments
+                
+        :param str name: The name of the function argument
+        :return: A boolean
+        :rtype: bool
+        """
         if self._funcArgs is None:
             return False
         return self._funcArgs.isInArgs(name)
@@ -61,9 +83,19 @@ class ReturnData():
         return self._returnValues
 
     def getReturnValueList(self) -> List:
+        """
+        Returns a list of all available return values
+        """
         return self._returnValues.keys()
 
     def isInReturnValues(self, name: str) -> bool:
+        """
+        Check whether the given value is existant within the return values
+        
+        :param str name: The name of the return value
+        :return: A boolean
+        :rtype: bool
+        """
         return name in self._returnValues.keys()
 
     def getReturnValue(self, name: str) -> Any | None:
@@ -103,8 +135,6 @@ class ReturnData():
         """
         newValue = value
         match location:
-                    #case AttributeLocation.RETURN_VAL:
-                        # Not needed
                     case AttributeLocation.FUNC_ARGS:
                         if not self.isInFuncArgs(name):
                             raise AttributeError()
@@ -118,29 +148,27 @@ class ReturnData():
 
         self._returnValues[name] = { "location": location, "value": newValue }
 
-    def extractFromOther(self, otherReturnData: ReturnData, inplace: bool = True) -> ReturnData | None:
+    def extractFromOther(self, otherReturnData: ReturnData, extractMode: bool = False, inplace: bool = True) -> ReturnData | None:
         """
         Extract and merge the returnData attributes from otherReturnData to self  
         If duplicates are found, use the attributes from otherReturnData
 
         :param otherReturnData: the instance to extract the data from
         :type otherReturnData: RetunData
+        :param bool extractMode: If this is set, also extract the mode fomr otherReturnData
         :param inplace: merge the data into self if set. otherwise return new instance (NOT IMPLEMENTED YET)
         :type inplace: bool
         :return: Either a new instance of ReturnData with the merged attributes or None
         :rtype: ReturnData | None
         """
         #TODO: make this actually work
-        if type(otherReturnData) == ReturnData:
-            self._returnCode = otherReturnData._returnCode
-            self._returnValues | otherReturnData._returnValues
-            self._argCodes | otherReturnData._argCodes
-            self._errorMessages | otherReturnData._errorMessages
-        elif type(otherReturnData) == dict: # Keep only until cleanup
-            self._returnCode = otherReturnData["ReturnCode"]
-            self._argCodes | otherReturnData["args"]
-            self._errorMessages | otherReturnData["errorMessages"]
-        ...
+        self._returnCode = otherReturnData._returnCode
+        self._returnValues.update(otherReturnData._returnValues)
+        self._argCodes.update(otherReturnData._argCodes)
+        self._errorMessages.update(otherReturnData._errorMessages)
+
+        if extractMode:
+            self.setMode(otherReturnData.mode)
 
     def getArgCodeList(self) -> List:
         """
@@ -173,18 +201,63 @@ class ReturnData():
         return self._errorMessages
 
     def getErrorMessageList(self) -> List:
+        """
+        Returns a list of all available entries from the error messages
+
+        :return: A list of all error message entries
+        :rtype: List
+        """
         return self._errorMessages.keys()
 
     def isInErrorMessages(self, name: str) -> bool:
+        """
+        Check whether the given entry is existant within the error messages
+
+        :param str name: The name of the entry
+        :return: A boolean
+        :rtype: bool
+        """
         return name in self._errorMessages.keys()
 
-    def getErrorMessage(self, name: str):
+    def getErrorMessage(self, name: str) -> str | None:
+        """
+        Return the error message for the given entry
+
+        :param str name: The name of the entry of the error message
+        :return: Either the error message or None if nonexistand
+        :rtype: str | None 
+        """
         if name in self._errorMessages.keys():
             return self._errorMessages[name]
         return None
 
-    def setErrorMessage(self, name: str, value, appendIfExists: bool = True, appendSeperator: str = "") -> None:
+    def setErrorMessage(self, name: str, value: str, appendIfExists: bool = True, appendSeperator: str = "") -> None:
+        """
+        Sets an error message for the specific argument
+
+        :param str name: The name of the argument or error message
+        :param str value: The error message to save
+        :param bool appendIfExists: If this is set, append error messages to existing entries. If not, just replace the entry
+        :param str appendSeperator: Determines, what will be put between the error messages if appended
+        """
         if self.isInErrorMessages(name) and appendIfExists:
             self._errorMessages[name] += appendSeperator + value
         else:
             self._errorMessages[name] = value
+
+    def __createArgumentData(self, argList: List | None = None, newMode: ProgramModes | None = None, extractMode: bool = True) -> ArgumentData:
+        """
+        Returns a new instance of ArgumentData generated from the ReturnData  
+        Doesn't work yet because importing seems to be annoying...
+
+        :params argList: If this is set, only extract the specified arguments
+        :type argList: List | None
+        :param newMode: Manually set the new mode
+        :type newMode: ProgramModes | None
+        :param extractMode: If this is set, also extract the mode set in rData. Only has an effect if newMode is not set
+        :type extractMode: bool
+        :return: A new instance of ArgumentData generated from the current instance of ReturnData
+        :rtype: ArgumentData
+        """
+        newArgD = ArgumentData()
+        return newArgD.extractFromReturnData(rData=self, valueList=argList, newMode=newMode, extractMode=extractMode)

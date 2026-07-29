@@ -3,6 +3,7 @@
 Compile exported Intune reports for Noncompliant devices into a formated excel spreadsheet or merge 2 lists with each other, to update the data.
 
 Note: this is already usable, just features like config files, GUI and more are still WIP
+And yes, this is overcomplicated. I don't care tho. It's fun to make
 
 ## Requirements
 
@@ -81,7 +82,7 @@ Main script
 - [ ] Check .csv for validity
 - [ ] Automatically retrieve new data from Intune
 - [ ] Automatically retrieve old list
-- [ ] Create a class for the return/parameter dictionaries
+- [x] Create a class for the return/parameter dictionaries
 
 ### Clean up
 

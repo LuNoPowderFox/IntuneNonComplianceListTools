@@ -1,5 +1,5 @@
-from modules.dataStructures import ArgumentData, ReturnData, ReturnCodes, LaunchData, gData, GlobalData
-from modules import config, CompileComplianceList, MergeComplianceLists, clUtils, utils
+from modules.dataStructures import ArgumentData, ReturnData, ReturnCodes, gData, GlobalData, ProgramModes
+from modules import utils
 
 def handleResult(result: ReturnData) -> None:
     if result.returnCode == ReturnCodes.SUCCESS:
@@ -30,7 +30,7 @@ def handleResult(result: ReturnData) -> None:
             print("Error, output file path not found!")
         print("")
 
-        print("Error Messages")
+        print("Error Messages:")
         for arg in result.getArgCodeList():
             if not isinstance(result.getArgCode(arg), ReturnCodes):
                 continue
@@ -41,9 +41,11 @@ def handleResult(result: ReturnData) -> None:
     else:
         print(f"Operation '{result.mode}' failed!\n")
 
-        print("Error Messages")
+        print("Error Messages:")
         for arg in result.getArgCodeList():
             if not isinstance(result.getArgCode(arg), ReturnCodes):
+                print(arg)
+                print(result.getArgCode(arg))
                 continue
             print(f"For argument '{arg}':")
             print(f"{result.getErrorMessage(arg)}\n")
@@ -59,63 +61,19 @@ if __name__ == "__main__":
     gData.globData = GlobalData(launchData=argsP)
     args = ArgumentData()
     extractedResult = gData.globData.launchData.runExtractFunc()
+    if extractedResult.returnCode == ReturnCodes.WARNING:
+        if extractedResult.getArgCode("newFile") == ReturnCodes.NEEDS_COMPILE_INPUT_FILES or extractedResult.getArgCode("oldFile") == ReturnCodes.NEEDS_COMPILE_INPUT_FILES:
+            extractedResult.setReturnCode(ReturnCodes.SUCCESS)
+            tmpR = gData.globData.launchData.runFunc("autoCompileFunc", ArgumentData().createFromExisting(extractedResult, ProgramModes.COMPILE))
+            for file in extractedResult.getReturnValue("compileFilesList"):
+                if tmpR.returnCode == ReturnCodes.SUCCESS:
+                    extractedResult.setReturnValue(name=file, value=tmpR.getReturnValue(file))
+                else:
+                    extractedResult.extractFromOther(tmpR)
     if not extractedResult.returnCode == ReturnCodes.SUCCESS:
         handleResult(extractedResult)
     args.extractFromReturnData(rData=extractedResult, extractMode=True, replaceExisting=True)
-    print(args.args)
 
     result = gData.globData.launchData.runModeFunc(args=args)
     
     handleResult(result=result)
-
-    # Will be removed in cleanup
-    exit(0)
-
-    result = argsP.func(argsP)
-    if result["ReturnCode"] == clUtils.ReturnCodes.SUCCESS:
-        print(f"Operation '{result["Mode"]}' was successful\n")
-        if result["Mode"] == "Help":
-            exit(0)
-        
-        print("Outputed file to: ", end="")
-        if "outputFile" in result["returnValues"].keys():
-            print(f"'{result["returnValues"]["outputFile"]}'")
-        elif "mergedFile" in result["returnValues"].keys():
-            print(f"'{result["returnValues"]["mergedFile"]}'")
-        else:
-            print("Error, output file path not found!")
-        print("")
-        exit(0)
-    elif result["ReturnCode"] == clUtils.ReturnCodes.PARTIAL_SUCCESS:
-        print(f"Operation '{result["Mode"]}' was partially successful\n")
-        if result["Mode"] == "Help":
-            exit(0)
-        
-        print("Outputed file to: ", end="")
-        if "outputFile" in result["returnValues"].keys():
-            print(f"'{result["returnValues"]["outputFile"]}'")
-        elif "mergedFile" in result["returnValues"].keys():
-            print(f"'{result["returnValues"]["mergedFile"]}'")
-        else:
-            print("Error, output file path not found!")
-        print("")
-
-        print("Error Messages")
-        for arg in result["args"].keys():
-            if not isinstance(result["args"][arg], clUtils.ReturnCodes):
-                continue
-            print(f"For argument '{arg}':")
-            print(f"{result["errorMessages"][arg]}\n")
-        print("")
-        exit(0)
-    else:
-        print(f"Operation '{result["Mode"]}' failed!\n")
-
-        print("Error Messages")
-        for arg in result["args"].keys():
-            if not isinstance(result["args"][arg], clUtils.ReturnCodes):
-                continue
-            print(f"For argument '{arg}':")
-            print(f"{result["errorMessages"][arg]}\n")
-
-        exit(1)

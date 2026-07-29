@@ -1,10 +1,9 @@
-from enum import Enum
 import argparse
 import os
 import re
 from typing import List
 from ..config import ConfigTypes
-from .CompileComplianceList import compileComplianceListOld, compileComplianceList
+from .CompileComplianceList import compileComplianceList
 from ..dataStructures import ArgumentData, ReturnData, ReturnCodes, AttributeLocation, ProgramModes, gData
 
 def createCompileParser(pParser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser | None:
@@ -48,7 +47,7 @@ def createMergeParser(pParser: argparse.ArgumentParser | None = None) -> argpars
                         help="[Not yet implemented] Try to automatically compile .csv files if given as input"
                         )
 
-def _autocompileInput(file2Compile: List[str], pArgs: ArgumentData) -> ReturnData | None:
+def autocompileInput(pArgs: ArgumentData) -> ReturnData:
     """
     Try to compile the input file for merging by setting the arguments here to be used for the compiling  
 
@@ -58,10 +57,14 @@ def _autocompileInput(file2Compile: List[str], pArgs: ArgumentData) -> ReturnDat
     :type pArgs: ArgumentData
     """
     rData = ReturnData()
+    if not pArgs.isInArgs("compileFilesList"):
+        rData.setReturnCode(ReturnCodes.ERROR)
+        rData.setArgCode("compileFilesList", ReturnCodes.MISSING_ARGS)
+        rData.setErrorMessage("compileFilesList", "Error, cannot autocompile input files due to missing the 'compileFileList' argument!")
+        return rData
     args = pArgs.createFromExisting(newMode=ProgramModes.COMPILE)
-    print(args.args)
 
-    fileList = file2Compile
+    fileList = pArgs.getArg("compileFilesList")
 
     print("Autocompiling input file(s)...")
 
@@ -70,65 +73,23 @@ def _autocompileInput(file2Compile: List[str], pArgs: ArgumentData) -> ReturnDat
         args.setArg(name="outputFile", value=re.sub(".csv$", ".xlsx", gData.globData.launchData.getLaunchArg(file)), location=AttributeLocation.FUNC_ARGS)
 
         tmpResult = compileComplianceList(args)
-        print(tmpResult.returnCode)
-        if not tmpResult.returnCode == ReturnCodes.SUCCESS:
-            #TODO: save the error better
-            print(tmpResult.getArgCodeList())
-            rData.setReturnCode(ReturnCodes.ERROR)
-            # rData.setArgCode(file, ReturnCodes.INVALID_INPUT_FILE)
-            rData.setArgCode(file, tmpResult.getArgCode("inputFile"))
-            rData.setErrorMessage(file, f"Error, failed to compile the file '{gData.globData.launchData.getLaunchArg(file)}'!")
-        else:
+        if tmpResult.returnCode == ReturnCodes.SUCCESS:
             rData.setReturnValue(name=file, value=tmpResult.getReturnValue("outputFile"))
+        else:
+            rData.setReturnCode(ReturnCodes.ERROR)
+            rData.setArgCode(file, tmpResult.getArgCode("inputFile"))
+            rData.setErrorMessage(file, f"Error, failed to compile the file '{gData.globData.launchData.getLaunchArg(file)}' due to the following problem(s):")
+            for arg in tmpResult.getArgCodeList(): 
+                if arg == "inputFile":
+                    continue   
+                rData.setArgCode(arg, tmpResult.getArgCode(arg))
+                if tmpResult.isInErrorMessages(arg):
+                    rData.setErrorMessage(file, tmpResult.getErrorMessage(arg), appendSeperator="\n")
+                    rData.setErrorMessage(arg, tmpResult.getErrorMessage(arg), appendSeperator="\n")
 
     return rData
 
-def autocompileInput(file2Compile: List[str], pArgs: dict) -> dict | ReturnData | None:
-    """
-    Try to compile the input file for merging by setting the arguments here to be used for the compiling  
-
-    :param file2Compile: The value key of the file within args  
-    :type file2Compile: str | List[str]  
-    :param dict pArgs: the arguments from which to set the arguments for the compile
-    """
-    result: dict = {
-        "ReturnCode": ReturnCodes.SUCCESS,
-        "returnValues": {},
-        "args": {},
-        "errorMessages": {}
-    }
-
-    fileList = file2Compile
-
-    args: dict = {
-        "ReturnCode": ReturnCodes.SUCCESS,
-        "Mode": "Compile",
-        "args": {
-            "wantedOS": pArgs["args"]["wantedOS"],
-            "deviceLinkSkip": pArgs["args"]["deviceLinkSkip"],
-            "emailLinks": pArgs["args"]["emailLinks"],
-            "keepDeviceIds": pArgs["args"]["keepDeviceIds"]
-        },
-        "errorMessages": {}
-    }
-
-    print("Autocompiling input file(s)...")
-
-    for file in fileList:
-        args["args"]["inputFile"] = pArgs["args"][file]
-        args["args"]["outputFile"] = re.sub(".csv$", ".xlsx", pArgs["args"][file])
-
-        tmpResult = compileComplianceListOld(args)
-        if not tmpResult["ReturnCode"] == ReturnCodes.SUCCESS:
-            result["ReturnCode"] = ReturnCodes.ERROR
-            result["returnValues"][file] = ReturnCodes.INVALID_INPUT_FILE
-            result["returnValues"][file] = f"Error, failed to compile the file '{pArgs['args'][file]}'!"
-        else:
-            result["returnValues"][file] = tmpResult["returnValues"]["outputFile"]
-
-    return result
-
-def _extractCommonArgs() -> ReturnData:
+def extractCommonArgs() -> ReturnData:
     rData = ReturnData()
 
     if gData.globData.launchData.getLaunchArg("wantedOS") is None:
@@ -142,9 +103,9 @@ def _extractCommonArgs() -> ReturnData:
     
     return rData
 
-def _extractCompileArgs() -> ReturnData:
-    #TODO: maybe check if launch args are empty which should not even be possible as this function gets called from the launch args class
-    rData = _extractCommonArgs()
+#TODO: maybe do the checking in another function or have the functions be able to be called with ArgumentData, so the GUI could for example use them when implemented
+def extractCompileArgs() -> ReturnData:
+    rData = extractCommonArgs()
     rData.setMode(ProgramModes.COMPILE)
 
     if gData.globData.launchData.getLaunchArg("inputFile") == None:
@@ -171,8 +132,8 @@ def _extractCompileArgs() -> ReturnData:
 
     return rData
 
-def _extractMergeArgs() -> ReturnData:
-    rData = _extractCommonArgs()
+def extractMergeArgs() -> ReturnData:
+    rData = extractCommonArgs()
     rData.setMode(ProgramModes.MERGE)
     isCompilePossible: bool = True
     compileFiles: List[str] = []
@@ -185,10 +146,12 @@ def _extractMergeArgs() -> ReturnData:
             rData.setErrorMessage("oldFile", "Given input file for old data does not exist!")
             isCompilePossible = False
     elif not str(gData.globData.launchData.getLaunchArg("oldFile")).endswith(".xlsx") and rData.getReturnValue("compileCSV"):
-        # rData.getReturnValue("oldFile", globData.globData.launchData.getLaunchArg("oldFile"))
+        # rData.getReturnValue("oldFile", gData.globData.launchData.getLaunchArg("oldFile"))
+        rData.setReturnValue(name="oldFile", value="oldFile", location=AttributeLocation.LAUNCH_ARGS)
         compileFiles.append("oldFile")
     elif not str(gData.globData.launchData.getLaunchArg("oldFile")).endswith(".xlsx") and not rData.getReturnValue("compileCSV"):
         rData.setReturnCode(ReturnCodes.ERROR)
+        rData.setReturnValue(name="oldFile", value="oldFile", location=AttributeLocation.LAUNCH_ARGS)
         rData.setArgCode("oldFile", ReturnCodes.INVALID_INPUT_FILE_FORMAT)
         rData.setErrorMessage("oldFile", "Given input file for old data is in the wrong format! Please give a file with the .xlsx or, if autocompile is enabled, .csv extension.")
     else:
@@ -200,28 +163,38 @@ def _extractMergeArgs() -> ReturnData:
             rData.setErrorMessage("newFile", "Given input file for new data does not exist!")
             isCompilePossible = False
     elif not str(gData.globData.launchData.getLaunchArg("newFile")).endswith(".xlsx") and rData.getReturnValue("compileCSV"):
-        # rData.getReturnValue("newFile", globData.globData.launchData.getLaunchArg("newFile"))
+        # rData.setReturnValue("newFile", gData.globData.launchData.getLaunchArg("newFile"))
+        rData.setReturnValue(name="newFile", value="newFile", location=AttributeLocation.LAUNCH_ARGS)
         compileFiles.append("newFile")
     elif not str(gData.globData.launchData.getLaunchArg("newFile")).endswith(".xlsx") and not rData.getReturnValue("compileCSV"):
         rData.setReturnCode(ReturnCodes.ERROR)
+        rData.setReturnValue(name="newFile", value="newFile", location=AttributeLocation.LAUNCH_ARGS)
         rData.setArgCode("newFile", ReturnCodes.INVALID_INPUT_FILE_FORMAT)
         rData.setErrorMessage("newFile", "Given input file for new data is in the wrong format! Please give a file with the .xlsx or, if autocompile is enabled, .csv extension.")
     else:
         rData.setReturnValue(name="newFile", value="newFile", location=AttributeLocation.LAUNCH_ARGS)
 
     #TODO: just return the list of input files to compile and trigger that function elsewhere
-    if not len(compileFiles) == 0 and isCompilePossible and rData.getReturnValue("compileCSV"):
-        tmpResult = _autocompileInput(compileFiles, ArgumentData().createFromExisting(rData, ProgramModes.COMPILE))
-        for file in compileFiles:
-            if tmpResult.returnCode == ReturnCodes.SUCCESS:
-                rData.setReturnValue(name=file, value=tmpResult.getReturnValue(file))
-            else:
-                rData.setReturnCode(ReturnCodes.ERROR)
-                rData.setArgCode(file, tmpResult.getArgCode(file))
-                rData.setErrorMessage(file, tmpResult.getErrorMessage(file))
+    # This way, the program could still decide whether it should compile the input files
+    # I just need to change the format checking above, so it would still allow it to autocompile anyway (maybe over a config setting)
+    if not len(compileFiles) == 0 and isCompilePossible:
+        rData.setReturnValue(name="compileFilesList", value=compileFiles)
+        if rData.getReturnValue("compileCSV"):
+            tmpResult = autocompileInput(ArgumentData().createFromExisting(rData, ProgramModes.COMPILE))
+            for file in compileFiles:
+                if tmpResult.returnCode == ReturnCodes.SUCCESS:
+                    rData.setReturnValue(name=file, value=tmpResult.getReturnValue(file))
+                else:
+                    rData.extractFromOther(tmpResult)
+        else:
+            rData.setReturnCode(ReturnCodes.WARNING)
+            for file in compileFiles:
+                rData.setArgCode(file, ReturnCodes.NEEDS_COMPILE_INPUT_FILES)
+                rData.setErrorMessage(file, f"Warning, the file '{gData.globData.launchData.getLaunchArg(file)}' has to be compiled before merging.")
 
     if gData.globData.launchData.getLaunchArg("mergedFile") is None:
-        if not rData.isInArgCodes("oldFile") and not rData.isInArgCodes("newFile"):
+        # if not rData.isInArgCodes("oldFile") and not rData.isInArgCodes("newFile"):
+        if not rData.isInArgCodes("oldFile") and not rData.isInArgCodes("newFile") or isCompilePossible:
             rData.setReturnValue(name="mergedFile", value=f"{rData.getReturnValue("oldFile").removesuffix(".xlsx")}-{rData.getReturnValue("newFile").split("\\")[-1].removesuffix(".xlsx")}_merged.xlsx")
         else:
             rData.setArgCode("mergedFile", ReturnCodes.ERROR)
@@ -230,167 +203,3 @@ def _extractMergeArgs() -> ReturnData:
         rData.setReturnValue(name="mergedFile", value="mergedFile", location=AttributeLocation.LAUNCH_ARGS)
 
     return rData
-
-# Instead of this, it should check if the arguments exist in the launch args and if yes, check if they are valid.
-# If both is the case, save a reference to that argument in the returnValues.
-# And if it isn't the case, save a corrected version directly in the returnValues
-# Those returnValues should then be extracted into an ArgumentData instance
-def extractCommonArgs(pArgs: dict | argparse.Namespace | None = None) -> dict | ReturnData | None:
-    """Return dictionary structure:
-    {
-        "ReturnCode": (ReturnCode),
-        "Mode": (Mode, the program is running in),
-        "args": {
-            (Argname): (Value or ReturnCode)        
-        },
-        "errorMessages": { (if needed)
-            (Argname): (Error message)
-        }    
-    }
-    """
-    #TODO: maybe move this somewhere better
-    pArgs.config.loadConfig(pArgs)
-    
-    args = vars(pArgs)
-    result: dict = {
-        "ReturnCode": ReturnCodes.SUCCESS,
-        "Mode": "",
-        "args": {
-
-        },
-        "errorMessages": {
-
-        }
-    }
-
-    if args["wantedOS"] is None:
-        tmp = pArgs.config.getConfig(ConfigTypes.StandartVals, "wantedOS")
-        result["args"]["wantedOS"] = tmp["wantedOS"] #if tmp is not None else None
-    else:
-        result["args"]["wantedOS"] = args["wantedOS"]
-    #TODO: maybe get the standart vals from the config here as well (not sure how yet)
-    result["args"]["deviceLinkSkip"] = args["deviceLinkSkip"]
-    result["args"]["emailLinks"] = args["emailLinks"]
-    result["args"]["keepDeviceIds"] = args["keepDeviceIds"]
-
-    return result
-
-# extract the needed arguments into a dict to be given to the actual module and check if they are valid
-def extractCompileArgs(pArgs: argparse.Namespace | None = None) -> dict | ReturnData | None:
-    """Return dictionary structure:
-    {
-        "ReturnCode": (ReturnCode),
-        "Mode": (Mode, the program is running in),
-        "args": {
-            (Argname): (Value or ReturnCode)        
-        },
-        "errorMessages": { (if needed)
-            (Argname): (Error message)
-        }    
-    }
-    """
-    args = vars(pArgs)
-    if pArgs is None:
-        result["ReturnCode"] = ReturnCodes.NO_ARGS_GIVEN
-        return result
-    result = extractCommonArgs(pArgs)
-    result["Mode"] = "Compile"
-
-    if args["inputFile"] == None:
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["inputFile"] = ReturnCodes.MISSING_INPUT_FILE
-        result["errorMessages"]["inputFile"] = "Error, no input file given!"
-    elif not os.path.exists(args["inputFile"]):
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["inputFile"] = ReturnCodes.INVALID_INPUT_FILE_PATH
-        result["errorMessages"]["inputFile"] = "Given input file does not exist!"
-    elif not str(args["inputFile"]).endswith(".csv"):
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["inputFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
-        result["errorMessages"]["inputFile"] = "Error, given input file is possibly not correct file type!\nPlease give a file with the '.csv' extension"
-    else: 
-        result["args"]["inputFile"] = args["inputFile"]
-    if args["outputFile"] is None:
-        if not result["args"]["inputFile"] in ReturnCodes:
-            result["args"]["outputFile"] = re.sub(".csv$", ".xlsx", args["inputFile"])
-        else:
-            result["args"]["outputFile"] = ReturnCodes.ERROR
-            result["errorMessages"]["outputFile"] = "Error, Unable to generate name of output file due to a invalid input file!"
-    else:
-        result["args"]["outputFile"] = args["outputFile"]
-
-    return result
-
-def extractMergeArgs(pArgs: argparse.Namespace | None = None) -> dict | ReturnData | None:
-    """Return dictionary structure:
-    {
-        "ReturnCode": (ReturnCode),
-        "Mode": (Mode, the program is running in),
-        "args": {
-            (Argname): (Value or ReturnCode)        
-        },
-        "errorMessages": { (if needed)
-            (Argname): (Error message)
-        }    
-    }
-    """
-    isCompilePossible: bool = True
-    compileFiles: List[str] = []
-    args = vars(pArgs)
-    if pArgs is None:
-        result["ReturnCode"] = ReturnCodes.NO_ARGS_GIVEN
-        return result
-    result = extractCommonArgs(pArgs)
-    result["Mode"] = "Merge"
-    result["args"]["compileCSV"] = args["compileCSV"]
-
-    if not os.path.exists(args["oldFile"]):
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["oldFile"] = ReturnCodes.INVALID_INPUT_FILE_PATH
-        result["errorMessages"]["oldFile"] = "Given input file for old data does not exist!"
-        isCompilePossible = False
-    elif not str(args["oldFile"]).endswith(".xlsx") and result["args"]["compileCSV"]:
-        result["args"]["oldFile"] = args["oldFile"]
-        compileFiles.append("oldFile")
-    elif not str(args["oldFile"]).endswith(".xlsx") and not result["args"]["compileCSV"]:
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["oldFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
-        result["errorMessages"]["oldFile"] = "Given input file for old data is in the wrong format! Please give a file with the .xlsx or, if autocompile is enabled, .csv extension."
-    else:
-        result["args"]["oldFile"] = args["oldFile"]
-
-    if not os.path.exists(args["newFile"]):
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["newFile"] = ReturnCodes.INVALID_INPUT_FILE_PATH
-        result["errorMessages"]["newFile"] = "Given input file for new data does not exist!"
-        isCompilePossible = False
-    elif not str(args["newFile"]).endswith(".xlsx") and result["args"]["compileCSV"]:
-        result["args"]["newFile"] = args["newFile"]
-        compileFiles.append("newFile")
-    elif not str(args["newFile"]).endswith(".xlsx") and not result["args"]["compileCSV"]:
-        result["ReturnCode"] = ReturnCodes.ERROR
-        result["args"]["newFile"] = ReturnCodes.INVALID_INPUT_FILE_FORMAT
-        result["errorMessages"]["newFile"] = "Given input file for new data is in the wrong format! Please give a file with the .xlsx or, if autocompile is enabled, .csv extension."
-    else:
-        result["args"]["newFile"] = args["newFile"]
-
-    if not len(compileFiles) == 0 and isCompilePossible and result["args"]["compileCSV"]:
-        tmpResult = autocompileInput(compileFiles, result)
-        for file in compileFiles:
-            if tmpResult["ReturnCode"] == ReturnCodes.SUCCESS:
-                result["args"][file] = tmpResult["returnValues"][file]
-            else:
-                result["ReturnCode"] = ReturnCodes.ERROR
-                result["args"][file] = tmpResult["returnValues"][file]
-                result["errorMessages"][file] = tmpResult["errorMessages"][file]
-
-    if args["mergedFile"] is None:
-        if not result["args"]["oldFile"] in ReturnCodes and not result["args"]["newFile"] in ReturnCodes:
-            result["args"]["mergedFile"] = f"{result["args"]["oldFile"].removesuffix(".xlsx")}-{result["args"]["newFile"].split("\\")[-1].removesuffix(".xlsx")}_merged.xlsx"
-        else:
-            result["args"]["mergedFile"] = ReturnCodes.ERROR
-            result["errorMessages"]["mergedFile"] = "Error, Unable to generate name of merged file due to invalid input files!"
-    else:
-        result["args"]["mergedFile"] = args["mergedFile"]
-
-    return result

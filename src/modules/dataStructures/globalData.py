@@ -36,15 +36,14 @@ class GlobalData():
         return self._config
     
     def _setLaunchData(self, launchArgs: argparse.Namespace | LaunchData) -> None:
-            """
-            Internal function to populate the launch data.  
-            Could *technically* be run multiple times, but isn't recommended because the data *should* only be set on launch
-            """
-            #TODO: make this extract the args properly
-            if type(launchArgs) == LaunchData:
-                self._launchData = launchArgs
-            else:
-                self._launchData = LaunchData(launchArgsRaw=launchArgs)
+        """
+        Internal function to populate the launch data.  
+        Could *technically* be run multiple times, but isn't recommended because the data *should* only be set on launch
+        """
+        if type(launchArgs) == LaunchData:
+            self._launchData = launchArgs
+        else:
+            self._launchData = LaunchData(launchArgsRaw=launchArgs)
 
     def _setMode(self, mode: ProgramModes) -> None:
         """

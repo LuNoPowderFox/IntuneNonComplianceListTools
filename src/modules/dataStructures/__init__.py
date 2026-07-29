@@ -5,7 +5,6 @@ from .returnData import ReturnData as ReturnData
 from .globalData import GlobalData as GlobalData
 from .launchData import LaunchData as LaunchData
 from .argumentData import ArgumentData as ArgumentData
-# from .globData import globData as globData
 from . import gData as gData
 
 # This is probably very stupid but I don't care

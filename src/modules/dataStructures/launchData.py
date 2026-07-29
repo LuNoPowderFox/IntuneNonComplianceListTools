@@ -22,8 +22,32 @@ class LaunchData():
     def _extractLaunchArgs(self) -> None:
         self._launchArgs = vars(self._launchArgsRaw)
         self._usedSubCommand = self.getLaunchArg("subCommand")
-        #TODO: maybe move the extraction somewhere here and then just check them where they are currently getting extracted
-        ...
+
+    def runFunc(self, funcName: str, arguments: ArgumentData | None = None) -> ReturnData:
+        """
+        Tries to run the specified function for the mode
+
+        :param funcName: The function that should be run
+        :type funcName: str
+        :param arguments: Optional arguments that can be given to the function
+        :type arguments: ArgumentData | None
+        :return: The result of the function or error codes
+        :rtype: ReturnData
+        """
+        rData = ReturnData()
+        #TODO: add a case to check if the function is not available for the current program mode
+        if not self.isInLaunchArgs(funcName):
+            rData.setReturnCode(ReturnCodes.ERROR)
+            rData.setArgCode("extractFunc", ReturnCodes.MISSING_ARGS)
+            rData.setErrorMessage("extractFunc", f"No launch argument with the name '{funcName}' was set!")
+            return rData
+        if not callable(self.getLaunchArg(funcName)):
+            rData.setArgCode(ReturnCodes.ERROR)
+            rData.setArgCode(funcName, ReturnCodes.IS_NOT_A_FUNCTION)
+            rData.setErrorMessage(funcName, f"Error, cannot run '{funcName}' as a function because it is not a function!")
+        if arguments is None:
+            return self.getLaunchArg(funcName)()
+        return self.getLaunchArg(funcName)(arguments)
 
     def runExtractFunc(self) -> ReturnData:
         """
@@ -32,13 +56,7 @@ class LaunchData():
         :return: The result of the extract function for that module
         :rtype: ReturnData
         """
-        rData = ReturnData()
-        if not self.isInLaunchArgs("extractFunc"):
-            rData.setReturnCode(ReturnCodes.ERROR)
-            rData.setArgCode("extractFunc", ReturnCodes.MISSING_ARGS)
-            rData.setErrorMessage("extractFunc", "No launch argument extraction function to run with launch args was set!")
-            return rData
-        return self.getLaunchArg("extractFunc")()
+        return self.runFunc("extractFunc")
 
     def runModeFunc(self, args: ArgumentData) -> ReturnData:
         """
@@ -47,16 +65,16 @@ class LaunchData():
         :return: The result of the run method for that module
         :rtype: ReturnData
         """
-        rData = ReturnData()
-        if not self.isInLaunchArgs("func"):
-            rData.setReturnCode(ReturnCodes.ERROR)
-            rData.setArgCode("func", ReturnCodes.MISSING_ARGS)
-            rData.setErrorMessage("func", "No function to run with launch args was set!")
-            return rData
-        
-        return self.getLaunchArg("func")(args)
+        return self.runFunc("func", arguments=args)
 
     def isInLaunchArgs(self, argument: str) -> bool:
+        """
+        Check whether the given value is existant within the launch arguments
+                        
+        :param str name: The name of the launch argument
+        :return: A boolean
+        :rtype: bool
+        """
         if argument in self._launchArgs.keys():
             return True
         return False
@@ -74,6 +92,9 @@ class LaunchData():
         raise AttributeError()
 
     def getConfig(self) -> Config | None:
+        """
+        Returns the config instance that got saved in the launchargs at start
+        """
         if not self.isInLaunchArgs("config"):
             return None
         return self.getLaunchArg("config")
