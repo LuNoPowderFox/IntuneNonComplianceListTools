@@ -135,7 +135,8 @@ def extractCompileArgs() -> ReturnData:
 def extractMergeArgs() -> ReturnData:
     rData = extractCommonArgs()
     rData.setMode(ProgramModes.MERGE)
-    isCompilePossible: bool = True
+    isCompileAllowed: bool = gData.globData.launchData.getLaunchArg("compileCSV") or gData.globData.config.getConfig(ConfigTypes.MergeBehaviour, "autoCompile/ask4CompileWhenNotAuto", returnAsDict=False)
+    isCompilePossible: bool = isCompileAllowed
     compileFiles: List[str] = []
 
     rData.setReturnValue("compileCSV", gData.globData.launchData.getLaunchArg("compileCSV"))
@@ -145,11 +146,10 @@ def extractMergeArgs() -> ReturnData:
             rData.setArgCode("oldFile", ReturnCodes.INVALID_INPUT_FILE_PATH)
             rData.setErrorMessage("oldFile", "Given input file for old data does not exist!")
             isCompilePossible = False
-    elif not str(gData.globData.launchData.getLaunchArg("oldFile")).endswith(".xlsx") and rData.getReturnValue("compileCSV"):
-        # rData.getReturnValue("oldFile", gData.globData.launchData.getLaunchArg("oldFile"))
+    elif not str(gData.globData.launchData.getLaunchArg("oldFile")).endswith(".xlsx") and isCompilePossible:
         rData.setReturnValue(name="oldFile", value="oldFile", location=AttributeLocation.LAUNCH_ARGS)
         compileFiles.append("oldFile")
-    elif not str(gData.globData.launchData.getLaunchArg("oldFile")).endswith(".xlsx") and not rData.getReturnValue("compileCSV"):
+    elif not str(gData.globData.launchData.getLaunchArg("oldFile")).endswith(".xlsx") and not isCompilePossible:
         rData.setReturnCode(ReturnCodes.ERROR)
         rData.setReturnValue(name="oldFile", value="oldFile", location=AttributeLocation.LAUNCH_ARGS)
         rData.setArgCode("oldFile", ReturnCodes.INVALID_INPUT_FILE_FORMAT)
@@ -162,11 +162,10 @@ def extractMergeArgs() -> ReturnData:
             rData.setArgCode("newFile", ReturnCodes.INVALID_INPUT_FILE_PATH)
             rData.setErrorMessage("newFile", "Given input file for new data does not exist!")
             isCompilePossible = False
-    elif not str(gData.globData.launchData.getLaunchArg("newFile")).endswith(".xlsx") and rData.getReturnValue("compileCSV"):
-        # rData.setReturnValue("newFile", gData.globData.launchData.getLaunchArg("newFile"))
+    elif not str(gData.globData.launchData.getLaunchArg("newFile")).endswith(".xlsx") and isCompilePossible:
         rData.setReturnValue(name="newFile", value="newFile", location=AttributeLocation.LAUNCH_ARGS)
         compileFiles.append("newFile")
-    elif not str(gData.globData.launchData.getLaunchArg("newFile")).endswith(".xlsx") and not rData.getReturnValue("compileCSV"):
+    elif not str(gData.globData.launchData.getLaunchArg("newFile")).endswith(".xlsx") and not isCompilePossible:
         rData.setReturnCode(ReturnCodes.ERROR)
         rData.setReturnValue(name="newFile", value="newFile", location=AttributeLocation.LAUNCH_ARGS)
         rData.setArgCode("newFile", ReturnCodes.INVALID_INPUT_FILE_FORMAT)
@@ -174,9 +173,6 @@ def extractMergeArgs() -> ReturnData:
     else:
         rData.setReturnValue(name="newFile", value="newFile", location=AttributeLocation.LAUNCH_ARGS)
 
-    #TODO: just return the list of input files to compile and trigger that function elsewhere
-    # This way, the program could still decide whether it should compile the input files
-    # I just need to change the format checking above, so it would still allow it to autocompile anyway (maybe over a config setting)
     if not len(compileFiles) == 0 and isCompilePossible:
         rData.setReturnValue(name="compileFilesList", value=compileFiles)
         if rData.getReturnValue("compileCSV"):
@@ -193,7 +189,6 @@ def extractMergeArgs() -> ReturnData:
                 rData.setErrorMessage(file, f"Warning, the file '{gData.globData.launchData.getLaunchArg(file)}' has to be compiled before merging.")
 
     if gData.globData.launchData.getLaunchArg("mergedFile") is None:
-        # if not rData.isInArgCodes("oldFile") and not rData.isInArgCodes("newFile"):
         if not rData.isInArgCodes("oldFile") and not rData.isInArgCodes("newFile") or isCompilePossible:
             rData.setReturnValue(name="mergedFile", value=f"{rData.getReturnValue("oldFile").removesuffix(".xlsx")}-{rData.getReturnValue("newFile").split("\\")[-1].removesuffix(".xlsx")}_merged.xlsx")
         else:

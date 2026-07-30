@@ -118,7 +118,7 @@ class ReturnData():
             case AttributeLocation.LAUNCH_ARGS:
                 return gData.globData.launchData.getLaunchArg(self._returnValues[name]["value"])
             case AttributeLocation.CONFIG:
-                return gData.globData.config.getConfig(self._returnValues[name]["value"]["type"], self._returnValues[name]["value"]["path"])
+                return gData.globData.config.getConfig(self._returnValues[name]["value"]["type"], self._returnValues[name]["value"]["path"], returnAsDict=False)
 
     def setReturnValue(self, name: str, value, configPath: str = "", location: AttributeLocation = AttributeLocation.RETURN_VAL) -> None:
         """

@@ -78,7 +78,11 @@ class Config:
     dir: {
         "oldValues": { (settings around old values)
             "keepOldValues": (bool to determine whether to display previous values),
+            "removeOldValuesWhenNoChange": (bool to determine whether to remove the old value when there wasn't a change),
             "oldValuesCount": (how many versions of old versions to keep before removal)
+        },
+        "autoCompile": { (settings involving auto compilation of .csv files)
+            "ask4CompileWhenNotAuto": (If this is true and the program was not launched with autocompile active, ask the user if they want to compile)
         }
     }
     
@@ -138,6 +142,7 @@ class Config:
         # self._loadConfig()
         # with open(configFile, 'w') as json_file:
         #     json.dump(self._conf, json_file, indent=4)
+        # exit(0)
         # return
 
         with open(configFile, "r") as file:
@@ -159,10 +164,11 @@ class Config:
                 self._configPath = settingFile
         self._loadConfigFromFile()
 
-    def __getConfigValue(self, configDir: dir, configName: str, checkExists: bool = False) -> dict | bool | None:
+    def __getConfigValue(self, configDir: dir, configName: str, returnAsDict: bool = False, checkExists: bool = False) -> dict | bool | None:
+        # if valuePath is empty it might be a problem (just realized it shouldn't even be called with config name as empty, so doesn't matter)
         valuePath = configName.split("/")
-        returnDir = configDir
-        tmp = returnDir
+        result = configDir
+        tmp = result
         for i, value in enumerate(valuePath):
             if type(tmp) == dict and value in tmp.keys():
                 tmp = tmp[value]
@@ -175,22 +181,29 @@ class Config:
             return True
         elif checkExists and tmp is None:
             return False
-        if tmp is not None and type(tmp) != dict:
-            returnDir = {valuePath[-1]: tmp}
-        else:
-            returnDir = tmp
-        return returnDir
+        if tmp is not None and type(tmp) != dict and returnAsDict:
+            result = {valuePath[-1]: tmp}
+        elif tmp is not None and type(tmp) != dict and not returnAsDict:
+            result = tmp
+        elif tmp is not None and type(tmp) == dict and returnAsDict:
+            result = {valuePath[-1]: tmp}
+        elif tmp is not None and type(tmp) == dict and not returnAsDict:
+            result = tmp
+        return result
 
-    def getConfig(self, configName: ConfigTypes, configValue: str | None = None, checkExists: bool = False) -> dict | bool | None:
+    def getConfig(self, configName: ConfigTypes, configValue: str | None = None, returnAsDict: bool = False, checkExists: bool = False) -> dict | bool | None:
         """
         Get values from the config
 
-        :param ConfigTypes configName: The part of the config to retrieve
+        :param configName: The part of the config to retrieve
+        :type configName: ConfigTypes
         :param configValue: the name/path of the config to get, separated by '/' (for example in Formating: "colors/*/headerBackgroundColor" for just the value 'headerBackgroundColor' or "colors/*" for all values of that config) [Optional]
         :type configValue: str | None
+        :param returnAsDict: If this is False, try to return the config value itself. If true, return the entry packaged in a dict with the entryname as its key
+        :type returnAsDict: bool
         :param checkExists: Tells the function to only check if the config exists. Should only be set by internal functions
         :type checkExists: bool
-        :return: The wanted config, bool if checkExists is set or None if not found
+        :return: The wanted config either by itself or packaged in a dict | bool if checkExists is set or None if not found
         :rtype: dict | bool | None
         """
         returnDir = None
@@ -208,7 +221,7 @@ class Config:
             case ConfigTypes.StandartVals:
                 returnDir = self._standartgVals
         if returnDir is not None and configValue is not None:
-            returnDir = self.__getConfigValue(returnDir, configValue, checkExists=checkExists)
+            returnDir = self.__getConfigValue(returnDir, configValue, returnAsDict=returnAsDict, checkExists=checkExists)
         return returnDir
     
     def isInConfig(self, configName: ConfigTypes, configValue: str | None = None) -> bool:

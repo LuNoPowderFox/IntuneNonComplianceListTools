@@ -1,4 +1,5 @@
 from modules.dataStructures import ArgumentData, ReturnData, ReturnCodes, gData, GlobalData, ProgramModes
+from modules.config import ConfigTypes
 from modules import utils
 
 def handleResult(result: ReturnData) -> None:
@@ -63,13 +64,14 @@ if __name__ == "__main__":
     extractedResult = gData.globData.launchData.runExtractFunc()
     if extractedResult.returnCode == ReturnCodes.WARNING:
         if extractedResult.getArgCode("newFile") == ReturnCodes.NEEDS_COMPILE_INPUT_FILES or extractedResult.getArgCode("oldFile") == ReturnCodes.NEEDS_COMPILE_INPUT_FILES:
-            extractedResult.setReturnCode(ReturnCodes.SUCCESS)
-            tmpR = gData.globData.launchData.runFunc("autoCompileFunc", ArgumentData().createFromExisting(extractedResult, ProgramModes.COMPILE))
-            for file in extractedResult.getReturnValue("compileFilesList"):
-                if tmpR.returnCode == ReturnCodes.SUCCESS:
-                    extractedResult.setReturnValue(name=file, value=tmpR.getReturnValue(file))
-                else:
-                    extractedResult.extractFromOther(tmpR)
+            if gData.globData.config.getConfig(ConfigTypes.MergeBehaviour, "autoCompile/ask4CompileWhenNotAuto") and input("Need to autocompile. Enter 'y' for confirmation: ") == 'y':
+                extractedResult.setReturnCode(ReturnCodes.SUCCESS)
+                tmpR = gData.globData.launchData.runFunc("autoCompileFunc", ArgumentData().createFromExisting(extractedResult, ProgramModes.COMPILE))
+                for file in extractedResult.getReturnValue("compileFilesList"):
+                    if tmpR.returnCode == ReturnCodes.SUCCESS:
+                        extractedResult.setReturnValue(name=file, value=tmpR.getReturnValue(file))
+                    else:
+                        extractedResult.extractFromOther(tmpR)
     if not extractedResult.returnCode == ReturnCodes.SUCCESS:
         handleResult(extractedResult)
     args.extractFromReturnData(rData=extractedResult, extractMode=True, replaceExisting=True)

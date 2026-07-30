@@ -161,7 +161,11 @@ _standartConf: dir = {
     "mergeBehaviour": {
         "oldValues": {
             "keepOldValues": True,
+            "removeOldValuesWhenNoChange": False,
             "oldValuesCount": 1
+        },
+        "autoCompile": {
+            "ask4CompileWhenNotAuto": True
         }
     },
     "valueGen": {
