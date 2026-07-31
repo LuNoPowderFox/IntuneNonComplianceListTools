@@ -76,13 +76,17 @@ Main script
 
 - [x] Turn this into a git repo
 - [ ] clean up the mess i made... (in progress)
+- [ ] seperate the actual processing and input/output methods into backend and frontend (also for the launch args, that they go over the same interface) (kinda in progress already)
 - [ ] GUI
-- [ ] Better config
+- [ ] TUI (maybe, idk yet, should be easy once the backend is properly set)
+- [ ] Better config (in progress)
 - [x] Autocompile .csv
-- [ ] Check .csv for validity
+- [ ] Check .csv and .xlsx for validity
 - [ ] Automatically retrieve new data from Intune
 - [ ] Automatically retrieve old list
 - [x] Create a class for the return/parameter dictionaries
+- [ ] Optimize performance or smth like that
+- [ ] make the default values for launch options more dynamic by setting them in the LaunchArgs class, dependant on the config
 
 ### Clean up
 
@@ -93,6 +97,10 @@ Main script
   other needed output in case of success
 - [x] main functions of the modules should receive a dictionary with all arguments and settings (maybe the settings over smth else) (in progress)
 - [x] maybe switch existing argument handling to argparse (it has support for options with multiple args) (in progress)
+
+### Optimize
+
+- [ ] Maybe add caching for functions to lower needed time
 
 ### GUI
 
@@ -105,17 +113,24 @@ Main script
 ### Better config
 
 TODO: choose default settings file path
-- json config file
-- better autoLink for format (custom patterns and columns)
-- better format options
-- better column oder options
-- automatic naming scheme options
-- handle the loading and setting of options in own module
-
-### Autocompile .csv
-
-Try to compile .csv files if given as input for the Merging
+- [x] json config file
+- [ ] better autoLink for format (custom patterns and columns)
+- [ ] better format options
+- [ ] better column oder options
+- [ ] automatic naming scheme options
+- [ ] handle the loading and setting of options in own module
+- [ ] add options for automatically setting sorting filters in the formated filter
 
 ### Check .csv for validity
 
 Check whether the given .csv file can even be compiled into an Excel file with it's data
+
+- probably in it's own module (checkInputFile)
+- check the attributes safed for usability/validity
+- return list of all problem attributes (will be moved there)
+
+### Check .xlsx for validity
+
+- in it's own module (checkInputFile)
+- check if the required attributes, set in the config, are found
+- return list of unkown/new attributes
