@@ -120,6 +120,7 @@ TODO: choose default settings file path
 - [ ] automatic naming scheme options
 - [ ] handle the loading and setting of options in own module
 - [ ] add options for automatically setting sorting filters in the formated filter
+- [ ] add options for compiling to determine where to extract specific data (for example: Intune device Id -> deviceID)
 
 ### Check .csv for validity
 
