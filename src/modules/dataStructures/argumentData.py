@@ -96,8 +96,8 @@ class ArgumentData():
             case AttributeLocation.LAUNCH_ARGS:
                 return gData.globData.launchData.getLaunchArg(self._args[name]["value"])
             case AttributeLocation.CONFIG:
-                print(gData.globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"])[name])
-                return gData.globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"])[name] # With this we just need to make sure that the config name is the same as [name] here
+                print(gData.globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"]))
+                return gData.globData.config.getConfig(self._args[name]["value"]["type"], self._args[name]["value"]["path"]) # With this we just need to make sure that the config name is the same as [name] here
 
     def setArg(self, name: str, value, configPath: str = "", location: AttributeLocation = AttributeLocation.FUNC_ARGS) -> None:
         """

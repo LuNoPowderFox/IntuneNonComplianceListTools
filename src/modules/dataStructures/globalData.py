@@ -62,8 +62,12 @@ class GlobalData():
         :param configPath: if set, try to load the config from the given Path. If not set, try to load either the config specified in launchArgs or the default config
         :type configPath: str | None
         """
+        #TODO: when 'settingsFile' is empty, the program fails to load the config
         self._config = self._launchData.getConfig()
         if configPath is None:
-            self._config.loadConfig(self._launchData.getLaunchArg("settingsFile"))
+            if self._launchData.isInLaunchArgs("settingsFile"):
+                self._config.loadConfig(self._launchData.getLaunchArg("settingsFile"))
+            else:
+                self._config.loadConfig("")
         else:
             self._config.loadConfig(configPath)

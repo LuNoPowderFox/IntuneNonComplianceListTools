@@ -3,9 +3,11 @@ from typing import List
 from modules import clUtils, MergeComplianceLists, CompileComplianceList
 from modules.complianceList import compileComplianceList, mergeCompileList
 from modules.config import Config
+from .dataStructures import ReturnData, ArgumentData, AttributeLocation, ReturnCodes, gData, ProgramModes
 import argparse
 
-def emptyFunc(tmp) -> None:
+def emptyFunc(tmp: Any | None = None) -> None | ReturnData:
+    return ReturnData()
     ...
 
 def createHelpParser(parser: argparse.ArgumentParser | None = None) -> None:
@@ -17,24 +19,28 @@ def createHelpParser(parser: argparse.ArgumentParser | None = None) -> None:
                         default="Help"
                         )
 
-def handleHelp(pArgs: argparse.Namespace | None = None) -> dict | None:
-    args = vars(pArgs)
+def handleHelp(args: ArgumentData | None = None) -> ReturnData | None:
+    # args = vars(pArgs)
     parserList = None
     helpMode = ""
-    if pArgs is None:
-        return
 
-    if "parserList" in args.keys():
-        parserList = args["parserList"]
-    if "helpMode" in args.keys():
-        helpMode = args["helpMode"]
+    #TODO: fix this properly
+
+    # if args.isInArgs("parserList"):
+    if gData.globData.launchData.isInLaunchArgs("parserList"):
+        # parserList = args.getArg("parserList")
+        parserList = gData.globData.launchData.getLaunchArg("parserList")
+    # if args.isInArgs("helpMode"):
+    if gData.globData.launchData.isInLaunchArgs("helpMode"):
+        # helpMode = args.getArg("helpMode")
+        helpMode = gData.globData.launchData.getLaunchArg("helpMode")
 
     if helpMode in parserList.keys():
         parserList[helpMode].print_help()
     else:
         parserList["Help"].print_help()
 
-    return {"ReturnCode": clUtils.ReturnCodes.SUCCESS, "Mode": "Help"}
+    return ReturnData(mode=ProgramModes.HELP)
 
 def createGuiParser(parser: argparse.ArgumentParser | None = None) -> None:
     ...
