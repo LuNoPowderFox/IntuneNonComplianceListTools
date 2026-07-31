@@ -158,7 +158,8 @@ class Config:
             else:
                 self._configPath = settingFile.settingsFile
         elif type(settingFile) == str:
-            if settingFile is None:
+            if settingFile is None or settingFile == "":
+                #TODO: this currently often breaks, fix this properly
                 self._configPath = _standartConfigPath
             else:
                 self._configPath = settingFile

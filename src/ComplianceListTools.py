@@ -4,9 +4,9 @@ from modules import utils
 
 def handleResult(result: ReturnData) -> None:
     if result.returnCode == ReturnCodes.SUCCESS:
-        print(f"Operation '{result.mode}' was successful\n")
-        if result.mode == "Help":
+        if result.mode == ProgramModes.HELP:
             exit(0)
+        print(f"Operation '{result.mode}' was successful\n")
         
         print("Outputed file to: ", end="")
         if result.isInReturnValues("outputFile"):
